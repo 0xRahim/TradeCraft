@@ -17,38 +17,55 @@ import {
   usdSigned,
 } from "@/lib/dashboard/format";
 import {
-  getTrades,
   MODELS,
-  TICKERS,
-  type Trade,
-} from "@/lib/dashboard/trades";
+  PAIRS,
+  SESSIONS,
+} from "@/lib/dashboard/trade-options";
+import {
+  entryLabels,
+  modelLabel,
+  outcomeTone,
+  poiLabels,
+  psychLabels,
+  recordR,
+  sessionLabel,
+  type TradeRecord,
+} from "@/lib/dashboard/trade-record";
+import { useTradeLog } from "@/lib/dashboard/remote";
 import {
   FullViewLink,
-  ResultChip,
-  TickerCell,
+  ModelCell,
+  OutcomeChip,
+  PairCell,
+  RCELL,
+  SessionCell,
+  SourceChip,
   TradeDate,
   TradeThumb,
+  ValidityChip,
 } from "./trade-bits";
 
 type View = "list" | "gallery" | "calendar";
-type SortKey = "date" | "tk" | "md" | "r" | "pnl";
+type SortKey = "date" | "pair" | "model" | "r" | "net";
 
 function toneText(n: number): string {
   return n > 0 ? "text-profit" : n < 0 ? "text-loss" : "";
 }
 
-function Summary({ rows }: { rows: Trade[] }) {
-  const wins = rows.filter((t) => t.pnl > 0).length;
-  const net = rows.reduce((x, t) => x + t.pnl, 0);
+function Summary({ rows }: { rows: TradeRecord[] }) {
+  const tps = rows.filter((t) => t.outcome === "TP").length;
+  const sls = rows.filter((t) => t.outcome === "SL").length;
+  const net = rows.reduce((x, t) => x + t.net, 0);
   const avgR = rows.length
-    ? rows.reduce((x, t) => x + t.r, 0) / rows.length
+    ? rows.reduce((x, t) => x + recordR(t), 0) / rows.length
     : 0;
+  const decided = tps + sls;
   const tiles: [string, string, string][] = [
     ["Trades", String(rows.length), ""],
     ["Net P&L", usdSigned(net), toneText(net)],
     [
       "Win rate",
-      rows.length ? ((wins / rows.length) * 100).toFixed(1) + "%" : "—",
+      decided ? ((tps / decided) * 100).toFixed(1) + "%" : "—",
       "",
     ],
     ["Avg R", rSigned(avgR), toneText(avgR)],
@@ -76,7 +93,7 @@ function TradeModal({
   onClose,
   onStep,
 }: {
-  trade: Trade;
+  trade: TradeRecord;
   position: { index: number; total: number };
   onClose: () => void;
   onStep: (d: 1 | -1) => void;
@@ -85,42 +102,45 @@ function TradeModal({
   useEffect(() => {
     closeRef.current?.focus();
   }, [trade.id]);
+  const r = recordR(trade);
   const stats: [string, React.ReactNode, boolean?][] = [
-    ["Model", trade.md, true],
-    ["Date", `${monthDay(trade.date)} · ${trade.time}`, false],
-    ["R:R", `1:${trade.plan} plan`, false],
+    ["Model", modelLabel(trade.model) || "—", true],
+    ["Session", sessionLabel(trade.session) || "—", true],
+    ["Date", `${trade.tradeDate ? monthDay(trade.tradeDate) : "—"} · ${trade.entryTime}`, false],
     [
-      "Result R",
-      <span key="r" className={toneText(trade.r)}>
-        {rSigned(trade.r)}
+      "Captured R",
+      <span key="r" className={toneText(r)}>
+        {rSigned(r)}
       </span>,
       false,
     ],
     [
-      "P&L",
-      <span key="p" className={toneText(trade.pnl)}>
-        {usdSigned(trade.pnl)}
+      "Net P&L",
+      <span key="p" className={toneText(trade.net)}>
+        {usdSigned(trade.net)}
       </span>,
       false,
     ],
-    ["Risk", `$${trade.risk}`, false],
+    ["Size", `${trade.lots} lots · ${trade.pips}${trade.pipsPoints ? " pts" : " pips"}`, false],
   ];
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-overlay p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={`${trade.tk} trade`}
+      aria-label={`${trade.pair} trade`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="max-h-[92vh] w-full max-w-180 overflow-auto rounded-2xl border border-border bg-card">
         <div className="flex items-center gap-3 border-b border-border p-4 pl-6">
-          <span className="flex flex-1 items-center gap-2 font-sans text-sm font-medium">
-            {trade.tk}
-            <Chip>{trade.side === "L" ? "LONG" : "SHORT"}</Chip>
-            <ResultChip pnl={trade.pnl} />
+          <span className="flex flex-1 flex-wrap items-center gap-2 font-sans text-sm font-medium">
+            {trade.pair}
+            <Chip>{trade.side === "long" ? "LONG" : "SHORT"}</Chip>
+            <OutcomeChip outcome={trade.outcome} />
+            <ValidityChip validity={trade.validity} />
+            <SourceChip source={trade.source} />
           </span>
           <FullViewLink id={trade.id} />
           <IconButton label="Close" onClick={onClose}>
@@ -148,7 +168,21 @@ function TradeModal({
             </div>
           ))}
         </div>
-        <div className="px-6 pb-6 text-muted-foreground">{trade.note}</div>
+        <div className="flex flex-wrap gap-1.5 px-6 pb-4">
+          {entryLabels(trade.entries).map((e) => (
+            <Chip key={e}>{e}</Chip>
+          ))}
+          {poiLabels(trade.pois).map((p) => (
+            <Chip key={p} variant="neutral">{p}</Chip>
+          ))}
+          {psychLabels(trade.psychTags).map((p) => (
+            <Chip key={p} variant="warning">{p}</Chip>
+          ))}
+        </div>
+        {trade.mechanicsContext ? (
+          <div className="px-6 pb-4 text-sm text-muted-foreground">{trade.mechanicsContext}</div>
+        ) : null}
+        <div className="px-6 pb-6 text-muted-foreground">{trade.notes || trade.psychNote}</div>
         <div className="flex gap-2 border-t border-border bg-surface-high p-4 px-6">
           <button
             type="button"
@@ -173,45 +207,51 @@ function TradeModal({
 }
 
 export function TradesView() {
-  const all = useMemo(() => getTrades(), []);
+  // Remote-first log (falls back to the local list offline/anon).
+  const all = useTradeLog();
   const [view, setView] = useState<View>("list");
   const [q, setQ] = useState("");
-  const [result, setResult] = useState("all");
+  const [status, setStatus] = useState("all");
   const [model, setModel] = useState("all");
-  const [ticker, setTicker] = useState("all");
+  const [pair, setPair] = useState("all");
+  const [session, setSession] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [dir, setDir] = useState<-1 | 1>(-1);
   const [[cy, cm], setCm] = useState<[number, number]>([2026, 8]);
   const [selDay, setSelDay] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const query = q.trim().toLowerCase();
     const a = all.filter(
       (t) =>
-        (result === "all" || (result === "w") === t.pnl > 0) &&
-        (model === "all" || t.md === model) &&
-        (ticker === "all" || t.tk === ticker) &&
-        (!query || (t.tk + " " + t.md).toLowerCase().includes(query)),
+        (status === "all" || t.outcome === status) &&
+        (model === "all" || t.model === model) &&
+        (pair === "all" || t.pair === pair) &&
+        (session === "all" || t.session === session) &&
+        (!query || (t.pair + " " + modelLabel(t.model)).toLowerCase().includes(query)),
     );
     a.sort((x, y) =>
       dir *
       (sortKey === "date"
-        ? (x.date + x.time).localeCompare(y.date + y.time)
-        : sortKey === "tk"
-          ? x.tk.localeCompare(y.tk)
-          : sortKey === "md"
-            ? x.md.localeCompare(y.md)
-            : x[sortKey] - y[sortKey]),
+        ? (x.tradeDate + x.entryTime).localeCompare(y.tradeDate + y.entryTime)
+        : sortKey === "pair"
+          ? x.pair.localeCompare(y.pair)
+          : sortKey === "model"
+            ? modelLabel(x.model).localeCompare(modelLabel(y.model))
+            : sortKey === "r"
+              ? recordR(x) - recordR(y)
+              : x.net - y.net),
     );
     return a;
-  }, [all, q, result, model, ticker, sortKey, dir]);
+  }, [all, q, status, model, pair, session, sortKey, dir]);
 
   /* calendar month */
   const cal = useMemo(() => {
-    const by: Record<string, Trade[]> = {};
+    const by: Record<string, TradeRecord[]> = {};
     rows.forEach((t) => {
-      (by[t.date] = by[t.date] || []).push(t);
+      if (!t.tradeDate) return;
+      (by[t.tradeDate] = by[t.tradeDate] || []).push(t);
     });
     const f = new Date(cy, cm, 1).getDay();
     const dm = new Date(cy, cm + 1, 0).getDate();
@@ -231,7 +271,7 @@ export function TradesView() {
     }
     const monthPnl = Object.keys(by)
       .filter((k) => k.startsWith(prefix))
-      .reduce((x, k) => x + by[k].reduce((z, t) => z + t.pnl, 0), 0);
+      .reduce((x, k) => x + by[k].reduce((z, t) => z + t.net, 0), 0);
     return { by, cells, sel, monthPnl };
   }, [rows, cy, cm, selDay]);
 
@@ -261,11 +301,14 @@ export function TradesView() {
 
   const headers: { key: SortKey | null; label: string; right?: boolean }[] = [
     { key: null, label: "Preview" },
-    { key: "tk", label: "Ticker" },
-    { key: "md", label: "Model" },
+    { key: "pair", label: "Pair" },
+    { key: "model", label: "Model" },
     { key: null, label: "Date" },
-    { key: "r", label: "R:R", right: true },
-    { key: "pnl", label: "P&L", right: true },
+    { key: null, label: "Session" },
+    { key: null, label: "Status" },
+    { key: "r", label: "R", right: true },
+    { key: "net", label: "Net P&L", right: true },
+    { key: null, label: "Validity" },
   ];
 
   return (
@@ -283,7 +326,7 @@ export function TradesView() {
             Trade log
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Every trade with its chart, result and model.
+            Every trade with its session, status and model.
           </p>
         </div>
         <Segmented<View>
@@ -308,16 +351,17 @@ export function TradesView() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search ticker, model..."
+            placeholder="Search pair, model..."
             aria-label="Search trades"
             className="h-9 w-full rounded-lg border border-input bg-card pr-3 pl-8 font-sans text-sm text-foreground outline-none placeholder:text-subtle-foreground focus:border-ring"
           />
         </div>
         {(
           [
-            [result, setResult, "Result", ["all", "w", "l"], ["All results", "Wins", "Losses"]],
-            [model, setModel, "Model", ["all", ...MODELS], ["All models", ...MODELS]],
-            [ticker, setTicker, "Ticker", ["all", ...TICKERS], ["All tickers", ...TICKERS]],
+            [status, setStatus, "Status", ["all", "TP", "SL", "BE"], ["All statuses", "TP", "SL", "BE"]],
+            [model, setModel, "Model", ["all", ...MODELS.map((m) => m.value)], ["All models", ...MODELS.map((m) => m.label)]],
+            [pair, setPair, "Pair", ["all", ...PAIRS], ["All pairs", ...PAIRS]],
+            [session, setSession, "Session", ["all", ...SESSIONS.map((s) => s.value)], ["All sessions", ...SESSIONS.map((s) => s.label)]],
           ] as const
         ).map(([v, set, label, values, labels]) => (
           <select
@@ -367,9 +411,6 @@ export function TradesView() {
                     )}
                   </th>
                 ))}
-                <th className="border-b border-border bg-card px-4 py-3 text-left font-mono text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                  Result
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -387,23 +428,31 @@ export function TradesView() {
                     <TradeThumb trade={t} />
                   </td>
                   <td className="border-b border-border px-4 py-2">
-                    <TickerCell trade={t} />
+                    <PairCell trade={t} />
                   </td>
-                  <td className="border-b border-border px-4 py-2 font-sans text-sm">
-                    {t.md}
+                  <td className="border-b border-border px-4 py-2">
+                    <ModelCell trade={t} />
                   </td>
                   <td className="border-b border-border px-4 py-2 font-mono text-sm whitespace-nowrap">
                     <TradeDate trade={t} />
                   </td>
-                  <td className="border-b border-border px-4 py-2 text-right font-mono text-sm whitespace-nowrap">
-                    <span className={toneText(t.r)}>{rSigned(t.r)}</span>{" "}
-                    <span className="text-subtle-foreground">1:{t.plan}</span>
-                  </td>
-                  <td className={`border-b border-border px-4 py-2 text-right font-mono text-sm whitespace-nowrap ${toneText(t.pnl)}`}>
-                    {usdSigned(t.pnl)}
+                  <td className="border-b border-border px-4 py-2">
+                    <SessionCell trade={t} />
                   </td>
                   <td className="border-b border-border px-4 py-2">
-                    <ResultChip pnl={t.pnl} />
+                    <OutcomeChip outcome={t.outcome} />
+                  </td>
+                  <td className="border-b border-border px-4 py-2 text-right font-mono text-sm whitespace-nowrap">
+                    <RCELL trade={t} />
+                  </td>
+                  <td className={`border-b border-border px-4 py-2 text-right font-mono text-sm whitespace-nowrap ${toneText(t.net)}`}>
+                    {usdSigned(t.net)}
+                  </td>
+                  <td className="border-b border-border px-4 py-2">
+                    <span className="flex items-center gap-1.5">
+                      <ValidityChip validity={t.validity} />
+                      <SourceChip source={t.source} />
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -426,29 +475,29 @@ export function TradesView() {
                   aria-hidden="true"
                 />
                 <span className="absolute top-3 left-3">
-                  <Chip>{t.side === "L" ? "LONG" : "SHORT"}</Chip>
+                  <Chip>{t.side === "long" ? "LONG" : "SHORT"}</Chip>
                 </span>
                 <span className="absolute top-3 right-3">
-                  <Chip variant={t.pnl > 0 ? "profit" : "loss"}>
-                    {rSigned(t.r)}
+                  <Chip variant={outcomeTone(t.outcome)}>
+                    {t.outcome}
                   </Chip>
                 </span>
               </div>
               <div className="grid gap-2 p-4">
                 <div className="flex items-baseline justify-between">
-                  <span className="font-sans text-sm font-medium">{t.tk}</span>
-                  <b className={`font-mono text-base ${toneText(t.pnl)}`}>
-                    {usdSigned(t.pnl)}
+                  <span className="font-sans text-sm font-medium">{t.pair}</span>
+                  <b className={`font-mono text-base ${toneText(t.net)}`}>
+                    {usdSigned(t.net)}
                   </b>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xs text-muted-foreground">{t.md}</span>
+                  <span className="text-xs text-muted-foreground">{modelLabel(t.model)}</span>
                   <span className="font-mono text-xs text-subtle-foreground">
-                    R:R 1:{t.plan}
+                    {sessionLabel(t.session)}
                   </span>
                 </div>
                 <span className="font-mono text-xs text-subtle-foreground">
-                  {monthDay(t.date)} · {t.time}
+                  {t.tradeDate ? monthDay(t.tradeDate) : "—"} · {t.entryTime}
                 </span>
               </div>
             </button>
@@ -492,7 +541,7 @@ export function TradesView() {
               {cal.cells.map((c, i) => {
                 if (!c.day || !c.date) return <div key={i} />;
                 const list = cal.by[c.date] || [];
-                const p = list.reduce((x, t) => x + t.pnl, 0);
+                const p = list.reduce((x, t) => x + t.net, 0);
                 return (
                   <button
                     key={i}
@@ -530,9 +579,9 @@ export function TradesView() {
               <MicroLabel>
                 {cal.sel ? monthDay(cal.sel) : "No day selected"}
               </MicroLabel>
-              <div className={`mt-1 font-mono text-xl ${toneText((cal.sel && cal.by[cal.sel]?.reduce((x, t) => x + t.pnl, 0)) || 0)}`}>
+              <div className={`mt-1 font-mono text-xl ${toneText((cal.sel && cal.by[cal.sel]?.reduce((x, t) => x + t.net, 0)) || 0)}`}>
                 {cal.sel && cal.by[cal.sel]?.length
-                  ? usdSigned(cal.by[cal.sel].reduce((x, t) => x + t.pnl, 0))
+                  ? usdSigned(cal.by[cal.sel].reduce((x, t) => x + t.net, 0))
                   : "—"}
               </div>
             </div>
@@ -547,13 +596,13 @@ export function TradesView() {
                   >
                     <TradeThumb trade={t} />
                     <span className="min-w-0 flex-1">
-                      <TickerCell trade={t} />
+                      <PairCell trade={t} />
                       <span className="block text-xs text-subtle-foreground">
-                        {t.md} · {t.time}
+                        {modelLabel(t.model)} · {t.entryTime}
                       </span>
                     </span>
-                    <span className={`font-mono text-sm ${toneText(t.pnl)}`}>
-                      {usdSigned(t.pnl)}
+                    <span className={`font-mono text-sm ${toneText(t.net)}`}>
+                      {usdSigned(t.net)}
                     </span>
                   </button>
                 ))}

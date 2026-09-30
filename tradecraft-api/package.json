@@ -1,0 +1,21 @@
+{
+  "name": "tradecraft-api",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.4.2",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev:vercel": "vercel dev --listen 3001",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.0",
+    "@vercel/node": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -181,16 +181,17 @@ export function getRadar(n: Period): { axis: string; score: number }[] {
 /* Distributions */
 
 const TM = [
-  "Silver Bullet",
-  "Breaker Block",
-  "ICT 2022 Model",
-  "Turtle Soup",
-  "Opening Range",
-  "Judas Swing",
+  "London reversal",
+  "New York reversal",
+  "London SMT cont.",
+  "New York SMT cont.",
+  "Asia 50% cont.",
+  "USD news",
+  "Market mechanics",
 ];
-const TB = [42, 31, 27, 21, 17, 10];
-const EM = ["FVG entry", "Order block", "Liquidity sweep", "Breaker retest", "Displacement"];
-const EB = [46, 34, 29, 22, 17];
+const TB = [38, 30, 24, 20, 14, 12, 10];
+const EM = ["BOS", "SMT", "I.BOS", "M5 engulfing", "B&T", "2LP"];
+const EB = [40, 32, 26, 22, 18, 10];
 
 export function getTradeModels(n: Period): { name: string; count: number }[] {
   const counts = apportion(TB, PD[n].t);
@@ -206,24 +207,33 @@ export function getPeriodTradeCount(n: Period): number {
   return PD[n].t;
 }
 
+// TODO(api): derive KPIs, models, entries and sessions from the trade store
+// once user trades sync to the backend. Demo distributions below use the
+// new entry-form taxonomy (condition models, entry models, sessions).
+
 const LO = [4, 8, 11, 12, 9, 7, 4, 2, 1];
 const NY = [6, 14, 18, 16, 12, 10, 7, 4, 3];
+const FR = [2, 5, 8, 9, 6, 4, 2, 1];
 
-export type SessionHour = { h: number; london: number; newyork: number };
+export type SessionHour = { h: number; london: number; newyork: number; frankfurt: number };
 
 export function getSessions(n: Period): {
   hours: SessionHour[];
   london: number;
   newyork: number;
+  frankfurt: number;
 } {
   const t = PD[n].t;
   const lo = Math.round((t * 58) / 148);
+  const fr = Math.round((t * 22) / 148);
   const a = apportion(LO, lo);
-  const b = apportion(NY, t - lo);
+  const b = apportion(NY, t - lo - fr);
+  const c = apportion(FR, fr);
   const hours: SessionHour[] = Array.from({ length: 24 }, (_, h) => ({
     h,
     london: a[h - 7] || 0,
     newyork: b[h - 12] || 0,
+    frankfurt: c[h - 6] || 0,
   }));
-  return { hours, london: lo, newyork: t - lo };
+  return { hours, london: lo, newyork: t - lo - fr, frankfurt: fr };
 }

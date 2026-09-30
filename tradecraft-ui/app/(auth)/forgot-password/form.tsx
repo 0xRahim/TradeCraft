@@ -13,23 +13,40 @@ import { Field } from "@/components/auth/field";
 import {
   ghostButtonClasses,
   PrimaryButton,
-  primaryButtonClasses,
 } from "@/components/auth/primary-button";
+import { ApiError } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth/auth-context";
 import { isValidEmail } from "@/lib/auth/password";
 
 export function ForgotPasswordForm() {
+  const { forgotPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>();
+  const [loading, setLoading] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidEmail(email)) {
       setEmailError("Enter a valid email address.");
       return;
     }
     setEmailError(undefined);
-    setSentTo(email);
+    setFormError(undefined);
+    setLoading(true);
+    try {
+      await forgotPassword(email.trim());
+      setSentTo(email.trim());
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not send the reset link. Try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (sentTo) {
@@ -59,9 +76,6 @@ export function ForgotPasswordForm() {
           <span className="font-mono text-foreground">{sentTo}</span>, a reset
           link is on its way. It expires in 30 minutes.
         </AuthSub>
-        <Link href="/reset-password" className={primaryButtonClasses}>
-          Open reset link (demo)
-        </Link>
         <button
           type="button"
           onClick={() => setSentTo(null)}
@@ -94,6 +108,14 @@ export function ForgotPasswordForm() {
       <AuthHeading>Forgot your password?</AuthHeading>
       <AuthSub>Enter your email and we&apos;ll send a link to reset it.</AuthSub>
       <form noValidate onSubmit={onSubmit}>
+        {formError ? (
+          <p
+            role="alert"
+            className="mb-4 rounded-lg border border-error/40 bg-error/10 px-3 py-2 text-sm text-error"
+          >
+            {formError}
+          </p>
+        ) : null}
         <Field label="Email" htmlFor="email" error={emailError}>
           <AuthInput
             id="email"
@@ -106,7 +128,9 @@ export function ForgotPasswordForm() {
             onChange={(e) => setEmail(e.target.value)}
           />
         </Field>
-        <PrimaryButton type="submit">Send reset link</PrimaryButton>
+        <PrimaryButton type="submit" loading={loading} loadingText="Sending…">
+          Send reset link
+        </PrimaryButton>
       </form>
     </CenteredLayout>
   );

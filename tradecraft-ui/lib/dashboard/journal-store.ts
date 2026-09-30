@@ -6,7 +6,9 @@ export type JournalDay = {
 };
 export type JournalData = Record<string, JournalDay>;
 
-export const JOURNAL_KEY = "tradeeye.journal.v1";
+export const JOURNAL_KEY = "tradecraft.journal.v1";
+/** Pre-rename key — read once for migration, then abandoned. */
+export const LEGACY_JOURNAL_KEY = "tradeeye.journal.v1";
 export const TODAY = "2026-09-29";
 
 export function seedJournal(): JournalData {
@@ -223,8 +225,22 @@ Sweep of the 20-day low, reclaimed within the hour. Entry on the reclaim.`,
 export function loadJournal(): JournalData {
   if (typeof window === "undefined") return seedJournal();
   try {
-    const raw = window.localStorage.getItem(JOURNAL_KEY);
-    if (raw) return JSON.parse(raw) as JournalData;
+    const raw =
+      window.localStorage.getItem(JOURNAL_KEY) ??
+      window.localStorage.getItem(LEGACY_JOURNAL_KEY);
+    if (raw) {
+      const data = JSON.parse(raw) as JournalData;
+      // One-time migration off the pre-rename key.
+      if (!window.localStorage.getItem(JOURNAL_KEY)) {
+        try {
+          window.localStorage.setItem(JOURNAL_KEY, raw);
+          window.localStorage.removeItem(LEGACY_JOURNAL_KEY);
+        } catch {
+          /* storage unavailable */
+        }
+      }
+      return data;
+    }
   } catch {
     /* fall through to seed */
   }

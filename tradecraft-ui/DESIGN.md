@@ -1,5 +1,5 @@
 ---
-name: TradeEye Monochrome Ledger
+name: TradeCraft Monochrome Ledger
 colors:
   background: '#09090B'
   on-background: '#FAFAFA'
@@ -154,7 +154,7 @@ spacing:
 
 ## Brand & Style
 
-TradeEye is a trading journal and analytics workstation for discretionary traders who review their own execution. The visual direction is a quiet, near-black instrument panel: monochrome chrome, hairline structure, and colour that appears only when it carries meaning. The design should feel like a well-tuned shadcn/ui build taken one step further, dense enough for review sessions and calm enough for long ones.
+TradeCraft is a trading journal and analytics workstation for discretionary traders who review their own execution. The visual direction is a quiet, near-black instrument panel: monochrome chrome, hairline structure, and colour that appears only when it carries meaning. The design should feel like a well-tuned shadcn/ui build taken one step further, dense enough for review sessions and calm enough for long ones.
 
 ### Aesthetic Philosophy
 - **Monochrome Chrome:** Navigation, buttons, cards, inputs, and tabs are rendered entirely in the zinc scale. The primary action is a soft off-white button on a dark floor, not a coloured one. Hierarchy comes from luminance, weight, and spacing.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Topbar } from "@/components/dashboard/topbar";
 import {
   Card,
@@ -22,18 +22,27 @@ import {
   PERIODS,
   type Period,
 } from "@/lib/dashboard/dashboard-data";
+import { useAuth } from "@/lib/auth/auth-context";
+import {
+  getDashboard,
+  useRemoteDashboard,
+  type DashboardPayload,
+} from "@/lib/dashboard/remote";
 import {
   monthYear,
   pnlSigned,
   pnlTone,
+  usdSigned,
   usdWhole,
 } from "@/lib/dashboard/format";
+import { entryLabels, modelLabel } from "@/lib/dashboard/trade-record";
 import { EquityChart, RadarView, SessionsChart } from "./charts";
 
 const MODEL_BAR_COLORS = [
   "bg-chart-1",
   "bg-chart-2",
   "bg-chart-3",
+  "bg-chart-4",
   "bg-chart-4",
   "bg-chart-4",
   "bg-chart-4",
@@ -44,8 +53,8 @@ function ModelBars({ rows }: { rows: { name: string; count: number }[] }) {
   return (
     <div>
       {rows.map((r, i) => (
-        <div key={r.name} className="mb-4 last:mb-0">
-          <div className="mb-1.5 flex justify-between text-sm">
+        <div key={r.name} className="mb-2.5 last:mb-0">
+          <div className="mb-1 flex justify-between text-sm">
             <span>{r.name}</span>
             <b className="font-mono text-xs font-medium">{r.count}</b>
           </div>
@@ -62,10 +71,51 @@ function ModelBars({ rows }: { rows: { name: string; count: number }[] }) {
 }
 
 function PnLCalendar() {
+  const { status } = useAuth();
   const [[y, m], setYm] = useState<[number, number]>([2026, 8]);
-  const cal = getCalendarMonth(y, m);
+  // Remote month calendar when authed (null = keep the seeded fallback).
+  const [remoteCal, setRemoteCal] = useState<DashboardPayload["calendar"] | null>(
+    null,
+  );
+  useEffect(() => {
+    if (status !== "authed") return;
+    let cancelled = false;
+    const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+    getDashboard({ period: 30, month: key })
+      .then((d) => {
+        if (!cancelled) setRemoteCal(d.calendar);
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteCal(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [status, y, m]);
+  const seed = getCalendarMonth(y, m);
+  const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+  // Build the seeded-style grid, overlaying remote day P&Ls when available.
+  const cal = (() => {
+    if (status !== "authed" || !remoteCal || remoteCal.month !== key) return seed;
+    const byPnl = new Map(remoteCal.days.map((d) => [d.date, d.pnl]));
+    const cells = seed.cells.map((c) => {
+      if (c.kind !== "day") return c;
+      const iso = `${key}-${String(c.day).padStart(2, "0")}`;
+      if (!byPnl.has(iso)) return { ...c, pnl: 0 };
+      const pnl = byPnl.get(iso) ?? 0;
+      return { ...c, pnl, intensity: Math.min(Math.abs(pnl) / 800, 1) };
+    });
+    return {
+      ...seed,
+      cells,
+      total: remoteCal.total,
+      wins: remoteCal.wins,
+      losses: remoteCal.losses,
+      best: remoteCal.best,
+    };
+  })();
   const tone = pnlTone(cal.total);
-  const atMax = y === 2026 && m >= 8;
+  const atMax = status === "authed" ? false : y === 2026 && m >= 8;
   return (
     <Card>
       <CardHeader
@@ -111,7 +161,7 @@ function PnLCalendar() {
           </div>
         }
       />
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1.5">
         {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
           <div
             key={i}
@@ -121,7 +171,7 @@ function PnLCalendar() {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1.5">
         {cal.cells.map((c, i) =>
           c.kind === "empty" ? (
             <div key={i} />
@@ -131,7 +181,7 @@ function PnLCalendar() {
               title={c.pnl ? pnlSigned(c.pnl) : "No trades"}
               style={{ "--k": c.intensity.toFixed(2) } as React.CSSProperties}
               className={[
-                "flex min-h-15 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md border border-transparent text-xs leading-4",
+                "flex min-h-10 min-w-0 flex-col items-center justify-center gap-px rounded-md border border-transparent text-[11px] leading-4 md:min-h-11",
                 c.pnl > 0
                   ? "cal-day-win"
                   : c.pnl < 0
@@ -150,7 +200,7 @@ function PnLCalendar() {
           ),
         )}
       </div>
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
         <Chip variant="profit">Green days {cal.wins}</Chip>
         <Chip variant="loss">Red days {cal.losses}</Chip>
         <Chip variant="neutral">Best day {pnlSigned(cal.best)}</Chip>
@@ -161,13 +211,22 @@ function PnLCalendar() {
 
 export function DashboardView() {
   const [period, setPeriod] = useState<Period>(30);
-  const kpis = getKpis(period);
-  const equity = getEquitySlice(period);
-  const radar = getRadar(period);
-  const tradeModels = getTradeModels(period);
-  const entryModels = getEntryModels(period);
-  const sessions = getSessions(period);
-  const total = getPeriodTradeCount(period);
+  // Remote aggregates when authed; seeded getters stay as fallback.
+  const remote = useRemoteDashboard(period);
+  const kpis = remote?.kpis ?? getKpis(period);
+  const equity = remote?.equity ?? getEquitySlice(period);
+  const radar = remote?.radar ?? getRadar(period);
+  const tradeModels = (remote?.tradeModels ?? getTradeModels(period)).map((r) => ({
+    ...r,
+    name: remote ? modelLabel(r.name) || r.name : r.name,
+  }));
+  const entryModels = (remote?.entryModels ?? getEntryModels(period)).map((r) => ({
+    ...r,
+    name: remote ? entryLabels([r.name])[0] || r.name : r.name,
+  }));
+  const sessions = remote?.sessions ?? getSessions(period);
+  const total = remote?.tradeCount ?? getPeriodTradeCount(period);
+  const lastEquity = equity.length ? equity[equity.length - 1].value : 0;
 
   return (
     <>
@@ -178,7 +237,7 @@ export function DashboardView() {
           </>
         }
       />
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl leading-8 font-medium tracking-tight">
             Dashboard
@@ -218,16 +277,16 @@ export function DashboardView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6 max-lg:gap-4">
+      <div className="grid grid-cols-12 gap-4 max-lg:gap-3">
         {kpis.map((k) => (
           <section
             key={k.label}
-            className="col-span-12 rounded-lg border border-border bg-card p-4 sm:col-span-6 xl:col-span-3"
+            className="col-span-12 min-w-0 rounded-lg border border-border bg-card p-3.5 sm:col-span-6 xl:col-span-3"
           >
             <MicroLabel>{k.label}</MicroLabel>
             <div
               className={[
-                "mt-2 mb-3 font-mono text-3xl leading-9 font-semibold tracking-tight",
+                "mt-1.5 mb-2 font-mono text-3xl leading-8 font-semibold tracking-tight",
                 k.tone === "profit"
                   ? "text-profit"
                   : k.tone === "loss"
@@ -246,15 +305,22 @@ export function DashboardView() {
           </section>
         ))}
 
-        <div className="col-span-12 xl:col-span-7">
+        <div className="col-span-12 min-w-0 xl:col-span-7">
           <Card>
             <CardHeader
               title="Equity curve"
               sub={
-                <>
-                  Account balance ·{" "}
-                  <span className="font-mono">$37,480.50</span>
-                </>
+                remote ? (
+                  <>
+                    Cumulative net ·{" "}
+                    <span className="font-mono">{usdSigned(lastEquity)}</span>
+                  </>
+                ) : (
+                  <>
+                    Account balance ·{" "}
+                    <span className="font-mono">$37,480.50</span>
+                  </>
+                )
               }
               right={<Chip variant="neutral">{period}D</Chip>}
             />
@@ -262,11 +328,11 @@ export function DashboardView() {
           </Card>
         </div>
 
-        <div className="col-span-12 xl:col-span-5">
+        <div className="col-span-12 min-w-0 xl:col-span-5">
           <PnLCalendar />
         </div>
 
-        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+        <div className="col-span-12 min-w-0 md:col-span-6 xl:col-span-3">
           <Card>
             <CardHeader
               title="Performance radar"
@@ -276,7 +342,7 @@ export function DashboardView() {
           </Card>
         </div>
 
-        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+        <div className="col-span-12 min-w-0 md:col-span-6 xl:col-span-3">
           <Card>
             <CardHeader
               title="Trade models"
@@ -287,7 +353,7 @@ export function DashboardView() {
           </Card>
         </div>
 
-        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+        <div className="col-span-12 min-w-0 md:col-span-6 xl:col-span-3">
           <Card>
             <CardHeader
               title="Entry models"
@@ -298,16 +364,20 @@ export function DashboardView() {
           </Card>
         </div>
 
-        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+        <div className="col-span-12 min-w-0 md:col-span-6 xl:col-span-3">
           <Card>
             <CardHeader
               title="Active sessions"
               sub="Trades by hour · UTC"
             />
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-2.5 flex flex-wrap gap-2">
               <Chip>
                 <span className="inline-block size-2 rounded-full bg-chart-2" />
                 LONDON {sessions.london}
+              </Chip>
+              <Chip>
+                <span className="inline-block size-2 rounded-full bg-chart-3" />
+                FRANKFURT {sessions.frankfurt}
               </Chip>
               <Chip>
                 <span className="inline-block size-2 rounded-full bg-chart-1" />

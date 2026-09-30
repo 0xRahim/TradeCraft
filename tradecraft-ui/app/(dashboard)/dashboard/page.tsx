@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DashboardView } from "./view";
 
 export const metadata: Metadata = {
-  title: "Dashboard · TradeEye",
+  title: "Dashboard · TradeCraft",
 };
 
 export default function DashboardPage() {

@@ -1,14 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useAuth } from "@/lib/auth/auth-context";
 import { Icon } from "./icons";
 import { useShell } from "./shell-context";
 import { IconButton } from "./ui";
 
 export function Topbar({ crumb }: { crumb: ReactNode }) {
   const { toggle } = useShell();
+  const { user } = useAuth();
+  const initial = (user?.fullName?.trim()?.[0] ?? user?.email?.[0] ?? "?").toUpperCase();
   return (
-    <div className="mb-4 flex h-12 items-center gap-3">
+    <div className="mb-3 flex h-10 items-center gap-3">
       <IconButton label="Toggle sidebar" onClick={toggle}>
         <Icon name="panel" />
       </IconButton>
@@ -26,8 +29,11 @@ export function Topbar({ crumb }: { crumb: ReactNode }) {
           ⌘ K
         </kbd>
       </div>
-      <span className="grid size-8 flex-none place-items-center rounded-full bg-accent font-mono text-xs font-medium text-muted-foreground max-md:ml-auto">
-        AK
+      <span
+        title={user?.email ?? "Account"}
+        className="grid size-8 flex-none place-items-center rounded-full bg-accent font-mono text-xs font-medium text-muted-foreground max-md:ml-auto"
+      >
+        {initial}
       </span>
     </div>
   );

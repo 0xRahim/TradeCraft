@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { JournalView } from "./view";
 
 export const metadata: Metadata = {
-  title: "Journal · TradeEye",
+  title: "Journal · TradeCraft",
 };
 
 export default function JournalPage() {

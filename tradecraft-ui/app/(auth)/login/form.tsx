@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ActivityFeed } from "@/components/auth/activity-feed";
 import { AuthHeading, AuthSub } from "@/components/auth/auth-bits";
 import { AuthInput } from "@/components/auth/auth-input";
@@ -9,16 +10,25 @@ import { Field } from "@/components/auth/field";
 import { PasswordInput } from "@/components/auth/password-input";
 import { PrimaryButton } from "@/components/auth/primary-button";
 import { SplitLayout } from "@/components/auth/split-layout";
+import { ApiError } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth/auth-context";
 import { isValidEmail } from "@/lib/auth/password";
 
 export function LoginForm() {
+  const router = useRouter();
+  const { status, login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
 
-  function onSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (status === "authed") router.replace("/dashboard");
+  }, [status, router]);
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const nextEmailError = isValidEmail(email)
       ? undefined
@@ -26,9 +36,21 @@ export function LoginForm() {
     const nextPasswordError = password ? undefined : "Enter your password.";
     setEmailError(nextEmailError);
     setPasswordError(nextPasswordError);
+    setFormError(undefined);
     if (nextEmailError || nextPasswordError || loading) return;
     setLoading(true);
-    setTimeout(() => setLoading(false), 1400);
+    try {
+      await login({ email: email.trim(), password });
+      router.push("/dashboard");
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not log in. Try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -36,6 +58,14 @@ export function LoginForm() {
       <AuthHeading>Welcome back</AuthHeading>
       <AuthSub>Log in to review your trades.</AuthSub>
       <form noValidate onSubmit={onSubmit}>
+        {formError ? (
+          <p
+            role="alert"
+            className="mb-4 rounded-lg border border-error/40 bg-error/10 px-3 py-2 text-sm text-error"
+          >
+            {formError}
+          </p>
+        ) : null}
         <Field label="Email" htmlFor="email" error={emailError}>
           <AuthInput
             id="email"
@@ -74,7 +104,7 @@ export function LoginForm() {
         </PrimaryButton>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        New to TradeEye?{" "}
+        New to TradeCraft?{" "}
         <Link href="/signup" className="font-medium text-foreground hover:underline hover:underline-offset-4">
           Create an account
         </Link>

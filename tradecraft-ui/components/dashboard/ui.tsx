@@ -13,7 +13,7 @@ export function Card({
   return (
     <section
       className={[
-        "min-w-0 rounded-lg border border-border bg-card p-6",
+        "flex h-full min-w-0 flex-col rounded-lg border border-border bg-card p-4",
         className ?? "",
       ].join(" ")}
     >
@@ -32,7 +32,7 @@ export function CardHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex items-start justify-between gap-3">
+    <div className="mb-3 flex items-start justify-between gap-3">
       <div>
         <div className="text-sm leading-5 font-semibold">{title}</div>
         {sub ? (

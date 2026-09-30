@@ -4,6 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Chip, IconButton, MicroLabel } from "@/components/dashboard/ui";
 import { Icon, type IconName } from "@/components/dashboard/icons";
+import { useAuth } from "@/lib/auth/auth-context";
+import {
+  hasLocalJournal,
+  pullJournal,
+  pushJournal,
+} from "@/lib/dashboard/remote";
 import {
   gradeLabel,
   gradeTone,
@@ -103,6 +109,11 @@ function initJournal(): {
 }
 
 export function JournalView() {
+  const { status } = useAuth();
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
   const [boot] = useState(initJournal);
   const [days, setDays] = useState<JournalData>(boot.days);
   const [sel, setSel] = useState<string | null>(boot.sel);
@@ -119,6 +130,59 @@ export function JournalView() {
   useEffect(() => {
     daysRef.current = days;
   });
+  // Remote sync: last successfully pushed state (null until first sync).
+  const syncedRef = useRef<JournalData | null>(null);
+  const remoteDatesRef = useRef<Set<string>>(new Set());
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* first authed load: pull server state, push local, adopt canonical */
+  useEffect(() => {
+    if (status !== "authed") return;
+    let cancelled = false;
+    (async () => {
+      const pulled = await pullJournal();
+      if (cancelled || !pulled) return;
+      remoteDatesRef.current = pulled.dates;
+      if (pulled.dates.size === 0 && !hasLocalJournal()) {
+        // Fresh account with an empty server: keep seeds for display only.
+        syncedRef.current = {};
+        return;
+      }
+      const snap = daysRef.current;
+      const pushed = await pushJournal(null, snap, pulled.dates).catch(() => null);
+      if (cancelled || !pushed) return;
+      const repulled = await pullJournal().catch(() => null);
+      if (cancelled || !repulled) {
+        syncedRef.current = pushed;
+        remoteDatesRef.current = new Set([
+          ...pulled.dates,
+          ...Object.keys(pushed),
+        ]);
+        setDays(pushed);
+        return;
+      }
+      if (JSON.stringify(daysRef.current) === JSON.stringify(snap)) {
+        syncedRef.current = repulled.data;
+        remoteDatesRef.current = repulled.dates;
+        setDays(repulled.data);
+      } else {
+        // Edited mid-sync: push the fresh state instead of adopting.
+        const pushed2 = await pushJournal(null, daysRef.current, repulled.dates).catch(
+          () => null,
+        );
+        if (cancelled || !pushed2) return;
+        syncedRef.current = pushed2;
+        remoteDatesRef.current = new Set([
+          ...repulled.dates,
+          ...Object.keys(pushed2),
+        ]);
+        setDays(pushed2);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   /* deep-link hash (e.g. from a trade's "View analysis") */
   useEffect(() => {
@@ -163,6 +227,22 @@ export function JournalView() {
       saveJournal(next);
       setSaving(false);
     }, 400);
+    // Write-through to the API when the session is synced.
+    if (statusRef.current === "authed" && syncedRef.current) {
+      if (pushTimer.current) clearTimeout(pushTimer.current);
+      pushTimer.current = setTimeout(() => {
+        const prev = syncedRef.current;
+        if (!prev) return;
+        pushJournal(prev, daysRef.current, remoteDatesRef.current)
+          .then((updated) => {
+            syncedRef.current = updated;
+            setDays(updated);
+          })
+          .catch(() => {
+            // Offline — local copy stays; next persist retries the diff.
+          });
+      }, 800);
+    }
   }
 
   function mutate(fn: (d: JournalData) => void) {

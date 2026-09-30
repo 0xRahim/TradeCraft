@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { DETAIL_TRADES } from "./detail-data";
+import { getDemoTrades } from "@/lib/dashboard/trades";
 import { TradeDetailView } from "./view";
 
 export function generateMetadata({
@@ -9,8 +8,8 @@ export function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   return params.then((p) => {
-    const t = DETAIL_TRADES.find((x) => x.id === p.id);
-    return { title: t ? `${t.tk} trade · TradeEye` : "Trade · TradeEye" };
+    const t = getDemoTrades().find((x) => x.id === p.id);
+    return { title: t ? `${t.pair} trade · TradeCraft` : "Trade · TradeCraft" };
   });
 }
 
@@ -20,6 +19,7 @@ export default async function TradeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (!DETAIL_TRADES.some((t) => t.id === id)) notFound();
+  // User trades live in localStorage (client-side), so resolution happens
+  // in the client view — never 404 here.
   return <TradeDetailView tradeId={id} />;
 }

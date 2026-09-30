@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { useAuth } from "@/lib/auth/auth-context";
 import { Icon, type IconName } from "./icons";
 import { useShell } from "./shell-context";
 import { Chip } from "./ui";
@@ -90,7 +91,7 @@ function NavButton({
       onClick={onClick}
       aria-expanded={expanded}
       className={[
-        "flex h-9 w-full items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap transition-colors",
+        "flex h-8 w-full items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap transition-colors",
         "focus-visible:outline-2 focus-visible:outline-ring",
         collapsed ? "justify-center px-0" : "",
         active
@@ -114,6 +115,8 @@ function SoonLabel({ collapsed, label }: { collapsed: boolean; label: string }) 
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
   const { collapsed, mobileOpen, closeMobile, syncLabel, syncing, sync } =
     useShell();
   const [open, setOpen] = useState<Record<string, boolean>>({
@@ -124,12 +127,12 @@ export function Sidebar() {
   return (
     <aside
       className={[
-        "fixed top-2 bottom-2 left-2 z-20 flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-3 transition-all",
-        collapsed ? "w-15" : "w-62.5",
+        "fixed top-2 bottom-2 left-2 z-20 flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-2.5 transition-all",
+        collapsed ? "w-15" : "w-54",
         mobileOpen
           ? "translate-x-0"
           : "-translate-x-[120%] md:translate-x-0",
-        "max-md:w-62.5",
+        "max-md:w-54",
       ].join(" ")}
     >
       <div
@@ -141,17 +144,17 @@ export function Sidebar() {
         <span className="grid size-6 flex-none place-items-center rounded-lg bg-primary text-on-primary">
           <Icon name="logo" className="size-3.5" />
         </span>
-        {!collapsed && <span className="flex-1 text-left">TradeEye</span>}
+        {!collapsed && <span className="flex-1 text-left">TradeCraft</span>}
       </div>
 
-      <div className="mt-4 mb-1 flex">
+      <div className="mt-3 mb-1 flex">
         <Link
-          href="/trades"
+          href="/trades/new"
           onClick={closeMobile}
           aria-label="New trade"
           title="New trade"
           className={[
-            "flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-primary font-medium whitespace-nowrap text-on-primary transition-colors hover:bg-primary-hover",
+            "flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-primary font-medium whitespace-nowrap text-on-primary transition-colors hover:bg-primary-hover",
             "focus-visible:outline-2 focus-visible:outline-ring",
             collapsed ? "flex-none px-0" : "",
           ].join(" ")}
@@ -167,7 +170,7 @@ export function Sidebar() {
         aria-label="Sync"
         title={syncLabel}
         className={[
-          "relative flex h-9 w-full items-center gap-3 rounded-lg px-2.5 whitespace-nowrap transition-colors",
+          "relative flex h-8 w-full items-center gap-3 rounded-lg px-2.5 whitespace-nowrap transition-colors",
           "text-muted-foreground hover:bg-surface-high hover:text-foreground",
           "focus-visible:outline-2 focus-visible:outline-ring",
           collapsed ? "justify-center px-0" : "",
@@ -188,7 +191,7 @@ export function Sidebar() {
           <div key={group.section}>
             <div
               className={[
-                "px-2.5 pt-5 pb-2 font-mono text-xs font-medium tracking-widest whitespace-nowrap text-subtle-foreground uppercase",
+                "px-2.5 pt-4 pb-1.5 font-mono text-xs font-medium tracking-widest whitespace-nowrap text-subtle-foreground uppercase",
                 collapsed
                   ? "mx-1 mt-2.5 mb-2 h-px bg-border p-0 text-[0px]"
                   : "",
@@ -228,7 +231,7 @@ export function Sidebar() {
                               href={c.href}
                               onClick={closeMobile}
                               className={[
-                                "flex h-8 w-full items-center rounded-lg px-2 text-sm whitespace-nowrap transition-colors",
+                                "flex h-7 w-full items-center rounded-lg px-2 text-sm whitespace-nowrap transition-colors",
                                 "focus-visible:outline-2 focus-visible:outline-ring",
                                 pathname === c.href ||
                                 pathname.startsWith(c.href + "/")
@@ -243,7 +246,7 @@ export function Sidebar() {
                               key={c.label}
                               title="Coming soon"
                               aria-disabled="true"
-                              className="flex h-8 w-full cursor-not-allowed items-center rounded-lg px-2 text-sm font-normal whitespace-nowrap text-subtle-foreground opacity-60"
+                              className="flex h-7 w-full cursor-not-allowed items-center rounded-lg px-2 text-sm font-normal whitespace-nowrap text-subtle-foreground opacity-60"
                             >
                               {c.label}
                             </span>
@@ -262,7 +265,7 @@ export function Sidebar() {
                     onClick={closeMobile}
                     title={item.label}
                     className={[
-                      "flex h-9 w-full items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap transition-colors",
+                      "flex h-8 w-full items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap transition-colors",
                       "focus-visible:outline-2 focus-visible:outline-ring",
                       collapsed ? "justify-center px-0" : "",
                       active
@@ -288,7 +291,7 @@ export function Sidebar() {
                   title={`${item.label} · Coming soon`}
                   aria-disabled="true"
                   className={[
-                    "flex h-9 w-full cursor-not-allowed items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap text-muted-foreground opacity-60",
+                    "flex h-8 w-full cursor-not-allowed items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap text-muted-foreground opacity-60",
                     collapsed ? "justify-center px-0" : "",
                   ].join(" ")}
                 >
@@ -312,27 +315,44 @@ export function Sidebar() {
       </nav>
 
       {!collapsed && (
-        <div className="flex flex-col gap-2 pt-3">
-          <div className="rounded-lg border border-border bg-surface-high p-3 text-xs leading-4.5 text-muted-foreground">
+        <div className="flex flex-col gap-1.5 pt-2">
+          <div className="rounded-lg border border-border bg-surface-high p-2.5 text-xs leading-4.5 text-muted-foreground">
             <div className="flex items-center justify-between text-sm font-semibold text-foreground">
               Update available <Chip variant="info">v2.4</Chip>
             </div>
-            <p className="mt-1 mb-3">
+            <p className="mt-1 mb-2">
               Faster imports and a redesigned review flow.
             </p>
             <button
               type="button"
-              className="h-8 w-full rounded-lg border border-border text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+              className="h-7 w-full rounded-lg border border-border text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             >
               Restart to update
             </button>
           </div>
-          <span className="flex h-9 w-full items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap text-muted-foreground">
+          <span className="flex h-8 w-full items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap text-muted-foreground">
             <Icon name="help" />
             <span className="flex-1 text-left text-sm">Help &amp; support</span>
           </span>
         </div>
       )}
+      <button
+        type="button"
+        title="Log out"
+        aria-label="Log out"
+        onClick={async () => {
+          await logout();
+          router.replace("/login");
+        }}
+        className={[
+          "flex h-8 w-full items-center gap-3 rounded-lg px-2.5 font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-surface-high hover:text-foreground",
+          "focus-visible:outline-2 focus-visible:outline-ring",
+          collapsed ? "justify-center px-0" : "",
+        ].join(" ")}
+      >
+        <Icon name="logout" />
+        {!collapsed && <span className="flex-1 text-left text-sm">Log out</span>}
+      </button>
     </aside>
   );
 }

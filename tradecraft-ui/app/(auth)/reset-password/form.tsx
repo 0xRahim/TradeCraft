@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import {
   AuthHeading,
   AuthSub,
@@ -16,15 +17,70 @@ import {
   PrimaryButton,
   primaryButtonClasses,
 } from "@/components/auth/primary-button";
+import { ApiError } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth/auth-context";
+
+type Recovery =
+  | { kind: "code"; code: string }
+  | { kind: "tokens"; access_token: string; refresh_token: string };
+
+/** Extract the recovery session from the Supabase email redirect. */
+function readRecoveryFromUrl(searchCode: string | null): Recovery | null {
+  if (searchCode) return { kind: "code", code: searchCode };
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  if (accessToken && refreshToken) {
+    return { kind: "tokens", access_token: accessToken, refresh_token: refreshToken };
+  }
+  if (accessToken) {
+    return { kind: "tokens", access_token: accessToken, refresh_token: "" };
+  }
+  const error = params.get("error_description") ?? params.get("error");
+  if (error) throw new Error(decodeURIComponent(error.replace(/\+/g, " ")));
+  return null;
+}
 
 export function ResetPasswordForm() {
+  return (
+    <Suspense>
+      <ResetPasswordFormInner />
+    </Suspense>
+  );
+}
+
+function ResetPasswordFormInner() {
+  const searchParams = useSearchParams();
+  const { resetPassword } = useAuth();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [confirmError, setConfirmError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>();
+  // Parsed once from the email-redirect URL (?code=… or #access_token=…).
+  const [{ recovery, linkError }] = useState<{
+    recovery: Recovery | null;
+    linkError?: string;
+  }>(() => {
+    try {
+      return { recovery: readRecoveryFromUrl(searchParams.get("code")) };
+    } catch (err) {
+      return {
+        recovery: null,
+        linkError:
+          err instanceof Error ? err.message : "This reset link is invalid.",
+      };
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const nextPasswordError =
       password.length >= 8 ? undefined : "Use at least 8 characters.";
@@ -32,8 +88,35 @@ export function ResetPasswordForm() {
       confirm === password ? undefined : "Passwords don't match.";
     setPasswordError(nextPasswordError);
     setConfirmError(nextConfirmError);
-    if (nextPasswordError || nextConfirmError) return;
-    setDone(true);
+    setFormError(undefined);
+    if (nextPasswordError || nextConfirmError || loading) return;
+    if (!recovery) {
+      setFormError("This reset link is invalid or has expired. Request a new one below.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await resetPassword(
+        recovery.kind === "code"
+          ? { password, code: recovery.code }
+          : {
+              password,
+              access_token: recovery.access_token,
+              refresh_token: recovery.refresh_token,
+            },
+      );
+      // Drop token fragments from the URL so they aren't left in history.
+      window.history.replaceState(null, "", window.location.pathname);
+      setDone(true);
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not update your password. Try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (done) {
@@ -87,7 +170,23 @@ export function ResetPasswordForm() {
       </AuthTile>
       <AuthHeading>Reset your password</AuthHeading>
       <AuthSub>Choose a new password for your account.</AuthSub>
+      {linkError ?? (!recovery ? "Open the reset link from your email to continue. Links expire after use." : null) ? (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg border border-error/40 bg-error/10 px-3 py-2 text-sm text-error"
+        >
+          {linkError ?? "Open the reset link from your email to continue. Links expire after use."}
+        </p>
+      ) : null}
       <form noValidate onSubmit={onSubmit}>
+        {formError ? (
+          <p
+            role="alert"
+            className="mb-4 rounded-lg border border-error/40 bg-error/10 px-3 py-2 text-sm text-error"
+          >
+            {formError}
+          </p>
+        ) : null}
         <div className="mb-4">
           <label
             htmlFor="password"
@@ -122,7 +221,7 @@ export function ResetPasswordForm() {
             onChange={(e) => setConfirm(e.target.value)}
           />
         </Field>
-        <PrimaryButton type="submit" className="mt-6">
+        <PrimaryButton type="submit" loading={loading} loadingText="Updating…" className="mt-6">
           Update password
         </PrimaryButton>
       </form>

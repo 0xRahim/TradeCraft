@@ -22,7 +22,7 @@ export function AuthLogo() {
           <circle cx="12" cy="12" r="3" />
         </svg>
       </span>
-      TradeEye
+      TradeCraft
     </Link>
   );
 }
