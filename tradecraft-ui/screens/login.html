@@ -1,0 +1,82 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Log in · TradeEye</title><link rel=preconnect href=https://fonts.googleapis.com><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel=stylesheet><style>*{box-sizing:border-box;margin:0}[hidden]{display:none!important}
+:root{--bg:#09090B;--card:#18181B;--acc:#27272A;--fg:#FAFAFA;--mut:#A1A1AA;--sub:#71717B;--bd:rgba(255,255,255,.1);--in:rgba(255,255,255,.15);--pri:#E4E4E7;--loss:#FF6467}
+body{background:var(--bg);color:var(--fg);font:400 14px/22px Geist,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.mono,.chip,.mt,.eye,.time{font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+a{color:var(--fg);text-decoration:none}a:hover{text-decoration:underline;text-underline-offset:3px}
+.split{display:grid;grid-template-columns:1fr 1fr;min-height:100vh}
+.pane{display:flex;flex-direction:column;padding:32px 48px;min-height:100vh}
+.mid{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 0}
+.box{width:100%;max-width:384px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.logo i{width:24px;height:24px;border-radius:8px;background:var(--pri);display:grid;place-items:center;color:#18181B}
+h1{font-size:24px;line-height:30px;font-weight:500;letter-spacing:-.01em}
+.sub{color:var(--mut);margin:4px 0 24px;font-size:13px}
+.f{margin-bottom:16px}
+label{display:flex;justify-content:space-between;font-size:13px;font-weight:500;margin-bottom:8px}
+label a{color:var(--mut);font-weight:400}
+.in{position:relative}
+input{width:100%;height:36px;padding:0 12px;background:var(--card);border:1px solid var(--in);border-radius:8px;color:var(--fg);font:inherit;outline:0;transition:border-color .15s}
+.solo input{background:var(--bg)}
+input::placeholder{color:var(--sub)}
+input:focus{border-color:var(--sub);box-shadow:0 0 0 1px var(--sub)}
+.bad input{border-color:rgba(255,100,103,.6)}
+.e{display:none;color:var(--loss);font-size:12px;margin-top:6px}.bad .e{display:block}
+.eye{position:absolute;right:4px;top:4px;height:28px;padding:0 8px;border:0;background:0;color:var(--sub);border-radius:6px;font-size:11px;cursor:pointer}
+.eye:hover{color:var(--fg);background:var(--acc)}
+.btn{height:36px;width:100%;border-radius:8px;font:500 14px Geist,sans-serif;cursor:pointer;border:1px solid transparent;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.pri{background:var(--pri);color:#18181B}.pri:hover{background:#fff}.pri:disabled{opacity:.6;cursor:default}
+.out{background:0;color:var(--fg);border-color:var(--bd)}.out:hover{background:var(--acc)}
+.ghost{background:0;color:var(--mut)}.ghost:hover{background:var(--acc);color:var(--fg)}
+.btn:focus-visible,.eye:focus-visible{outline:2px solid var(--sub);outline-offset:2px}
+.oauth{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.or{display:flex;align-items:center;gap:12px;color:var(--sub);font-size:12px;margin:20px 0}.or:before,.or:after{content:"";flex:1;height:1px;background:var(--bd)}
+.foot{text-align:center;color:var(--mut);font-size:13px;margin-top:24px}.foot a{color:var(--fg);font-weight:500}
+.fine{color:var(--sub);font-size:12px;margin-top:16px;text-align:center}.fine a{color:var(--mut)}
+.solo{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:32px 16px;position:relative}
+.solo>*{position:relative}
+.solo:before{content:"";position:fixed;inset:0;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:48px 48px;-webkit-mask-image:radial-gradient(ellipse at center,#000,transparent 70%);mask-image:radial-gradient(ellipse at center,#000,transparent 70%);opacity:.6;pointer-events:none}
+.card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:32px}
+.tile{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--bd);background:var(--acc);margin-bottom:20px}
+.tile.p{background:#052E1A;border-color:rgba(34,197,94,.3);color:#4ADE80}
+.meter{display:flex;gap:4px;margin-top:8px}.meter i{flex:1;height:4px;border-radius:9px;background:var(--acc);transition:background .2s}
+.mt{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-top:6px}
+.chip{display:inline-flex;gap:6px;align-items:center;font-size:11px;font-weight:500;line-height:16px;padding:2px 10px;border-radius:9px;border:1px solid var(--bd);color:var(--mut)}
+.chip.p{background:#052E1A;color:#4ADE80;border-color:rgba(34,197,94,.3)}
+.chip.l{background:#3B0A0C;color:#FF8A8C;border-color:rgba(255,100,103,.3)}
+.side{background:var(--card);border-left:1px solid var(--bd);padding:48px;display:flex;flex-direction:column;justify-content:center}
+.side>div{max-width:440px;width:100%;margin:0 auto}
+.side h2{font-size:32px;line-height:38px;font-weight:500;letter-spacing:-.02em}
+.side p{color:var(--mut);margin:8px 0 40px}
+.ent{display:flex;gap:12px;animation:in .5s both;animation-delay:calc(var(--i)*.14s + .2s)}
+.lft{display:flex;flex-direction:column;align-items:center}
+.av{width:32px;height:32px;border-radius:99px;background:var(--acc);color:var(--mut);display:grid;place-items:center;font:500 11px 'Geist Mono',monospace;border:2px solid var(--card)}
+.rail{flex:1;width:1px;background:var(--bd);margin:4px 0}
+.rt{flex:1;padding-bottom:24px}
+.row{display:flex;justify-content:space-between;gap:12px;font-size:15px}.row span{color:var(--mut)}.row b{font-weight:500}
+.time{font-size:12px;color:var(--sub);white-space:nowrap}
+.chips{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@media(max-width:900px){.split{grid-template-columns:1fr}.side{display:none}.pane{padding:24px 16px}}
+@media(prefers-reduced-motion:reduce){.ent{animation:none}}
+</style></head><body><main class=split><section class=pane><a class=logo href=login.html><i><svg width=14 height=14 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2.4 stroke-linecap=round stroke-linejoin=round><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx=12 cy=12 r=3/></svg></i>TradeEye</a><div class=mid><div class=box>
+<h1>Welcome back</h1><p class=sub>Log in to review your trades.</p><div class=oauth><button class="btn out" type=button>Google</button><button class="btn out" type=button>GitHub</button></div><div class=or>or</div>
+<form novalidate>
+<div class=f><label for=e>Email</label><input id=e type=email placeholder=you@example.com autocomplete=email><div class=e>Enter a valid email address.</div></div>
+<div class=f><label for=p>Password <a href=forgot-password.html>Forgot password?</a></label><div class=in><input id=p type=password placeholder="••••••••" autocomplete=current-password><button class=eye type=button>Show</button></div><div class=e>Enter your password.</div></div>
+<button class="btn pri" style=margin-top:24px>Log in</button></form>
+<p class=foot>New to TradeEye? <a href=signup.html>Create an account</a></p></div></div></section>
+<aside class=side><div>
+<h2>Your edge lives in the review.</h2>
+<p>Log every trade, tag every rule, and see what your execution is really doing.</p>
+<div class=ent style=--i:0><div class=lft><div class=av>EU</div><div class=rail></div></div><div class=rt><div class=row><div><b>EURUSD</b> <span>hit take profit on</span> <b>London Open Long</b></div><div class=time>2 mins ago</div></div><div class=chips><span class="chip p">+2.4R</span><span class=chip>Chart.png</span></div></div></div>
+<div class=ent style=--i:1><div class=lft><div class=av>NQ</div><div class=rail></div></div><div class=rt><div class=row><div><b>NQ</b> <span>stopped out of</span> <b>NY AM Fade</b></div><div class=time>1 hr ago</div></div><div class=chips><span class="chip l">-1.0R</span><span class=chip>Stopped out</span></div></div></div>
+<div class=ent style=--i:2><div class=lft><div class=av>YO</div></div><div class=rt><div class=row><div><b>You</b> <span>reviewed</span> <b>Silver Bullet</b></div><div class=time>Today</div></div><div class=chips><span class="chip p">All rules followed</span><span class=chip>12 trades</span></div></div></div>
+</div></aside>
+</main><script>const $=s=>document.querySelector(s),em=v=>/^\S+@\S+\.\S+$/.test(v);
+document.querySelectorAll('.eye').forEach(b=>b.onclick=()=>{const i=b.parentNode.querySelector('input'),s=i.type=='password';i.type=s?'text':'password';b.textContent=s?'Hide':'Show'});
+function bad(el,on){el.closest('.f').classList.toggle('bad',on);return on}
+function load(b,t){const o=b.textContent;b.disabled=true;b.textContent=t;setTimeout(()=>{b.disabled=false;b.textContent=o},1400)}
+function score(p){let s=0;if(p.length>=8)s++;if(/[A-Z]/.test(p)&&/[a-z]/.test(p))s++;if(/\d/.test(p))s++;if(/[^A-Za-z0-9]/.test(p)||p.length>=14)s++;return p?Math.max(s,1):0}
+function meter(i){const s=score(i.value),c=['','#FF6467','#FBBF24','#FAFAFA','#22C55E'][s];document.querySelectorAll('.meter i').forEach((e,k)=>e.style.background=k<s?c:'');$('.ml').textContent=['Use 8+ characters','Weak','Fair','Good','Strong'][s]}
+$('form').onsubmit=e=>{e.preventDefault();const x=bad($('#e'),!em($('#e').value)),y=bad($('#p'),!$('#p').value);if(!x&&!y)load($('.pri'),'Logging in…')}
+</script></body></html>
