@@ -11,14 +11,7 @@ import {
 } from "@/components/dashboard/ui";
 import { Icon } from "@/components/dashboard/icons";
 import {
-  getCalendarMonth,
-  getEntryModels,
-  getEquitySlice,
-  getKpis,
-  getPeriodTradeCount,
-  getRadar,
-  getSessions,
-  getTradeModels,
+  buildMonthCells,
   PERIODS,
   type Period,
 } from "@/lib/dashboard/dashboard-data";
@@ -50,6 +43,13 @@ const MODEL_BAR_COLORS = [
 
 function ModelBars({ rows }: { rows: { name: string; count: number }[] }) {
   const max = rows[0]?.count || 1;
+  if (!rows.length) {
+    return (
+      <p className="py-4 text-center text-sm text-subtle-foreground">
+        No data yet.
+      </p>
+    );
+  }
   return (
     <div>
       {rows.map((r, i) => (
@@ -72,8 +72,11 @@ function ModelBars({ rows }: { rows: { name: string; count: number }[] }) {
 
 function PnLCalendar() {
   const { status } = useAuth();
-  const [[y, m], setYm] = useState<[number, number]>([2026, 8]);
-  // Remote month calendar when authed (null = keep the seeded fallback).
+  const [[y, m], setYm] = useState<[number, number]>(() => {
+    const now = new Date();
+    return [now.getFullYear(), now.getMonth()];
+  });
+  // Remote month calendar (null while loading / on error → empty grid).
   const [remoteCal, setRemoteCal] = useState<DashboardPayload["calendar"] | null>(
     null,
   );
@@ -92,22 +95,22 @@ function PnLCalendar() {
       cancelled = true;
     };
   }, [status, y, m]);
-  const seed = getCalendarMonth(y, m);
   const key = `${y}-${String(m + 1).padStart(2, "0")}`;
-  // Build the seeded-style grid, overlaying remote day P&Ls when available.
+  // Month grid overlaid with live day P&Ls.
   const cal = (() => {
-    if (status !== "authed" || !remoteCal || remoteCal.month !== key) return seed;
+    const cells = buildMonthCells(y, m);
+    if (!remoteCal || remoteCal.month !== key) {
+      return { cells, total: 0, wins: 0, losses: 0, best: 0 };
+    }
     const byPnl = new Map(remoteCal.days.map((d) => [d.date, d.pnl]));
-    const cells = seed.cells.map((c) => {
+    const overlaid = cells.map((c) => {
       if (c.kind !== "day") return c;
       const iso = `${key}-${String(c.day).padStart(2, "0")}`;
-      if (!byPnl.has(iso)) return { ...c, pnl: 0 };
       const pnl = byPnl.get(iso) ?? 0;
       return { ...c, pnl, intensity: Math.min(Math.abs(pnl) / 800, 1) };
     });
     return {
-      ...seed,
-      cells,
+      cells: overlaid,
       total: remoteCal.total,
       wins: remoteCal.wins,
       losses: remoteCal.losses,
@@ -115,7 +118,6 @@ function PnLCalendar() {
     };
   })();
   const tone = pnlTone(cal.total);
-  const atMax = status === "authed" ? false : y === 2026 && m >= 8;
   return (
     <Card>
       <CardHeader
@@ -151,7 +153,6 @@ function PnLCalendar() {
             </span>
             <IconButton
               label="Next month"
-              disabled={atMax}
               onClick={() =>
                 setYm(([yy, mm]) => (mm < 11 ? [yy, mm + 1] : [yy + 1, 0]))
               }
@@ -209,24 +210,86 @@ function PnLCalendar() {
   );
 }
 
+const ZERO_SESSIONS = {
+  hours: Array.from({ length: 24 }, (_, h) => ({
+    h,
+    london: 0,
+    newyork: 0,
+    frankfurt: 0,
+  })),
+  london: 0,
+  newyork: 0,
+  frankfurt: 0,
+};
+
 export function DashboardView() {
   const [period, setPeriod] = useState<Period>(30);
-  // Remote aggregates when authed; seeded getters stay as fallback.
-  const remote = useRemoteDashboard(period);
-  const kpis = remote?.kpis ?? getKpis(period);
-  const equity = remote?.equity ?? getEquitySlice(period);
-  const radar = remote?.radar ?? getRadar(period);
-  const tradeModels = (remote?.tradeModels ?? getTradeModels(period)).map((r) => ({
+  // Live aggregates (the layout guard ensures we only render when authed).
+  const { data: remote, loading, error, reload } = useRemoteDashboard(period);
+  const kpis = remote?.kpis ?? [];
+  const equity = remote?.equity ?? [];
+  const radar = remote?.radar ?? [];
+  const tradeModels = (remote?.tradeModels ?? []).map((r) => ({
     ...r,
-    name: remote ? modelLabel(r.name) || r.name : r.name,
+    name: modelLabel(r.name) || r.name,
   }));
-  const entryModels = (remote?.entryModels ?? getEntryModels(period)).map((r) => ({
+  const entryModels = (remote?.entryModels ?? []).map((r) => ({
     ...r,
-    name: remote ? entryLabels([r.name])[0] || r.name : r.name,
+    name: entryLabels([r.name])[0] || r.name,
   }));
-  const sessions = remote?.sessions ?? getSessions(period);
-  const total = remote?.tradeCount ?? getPeriodTradeCount(period);
+  const sessions = remote?.sessions ?? ZERO_SESSIONS;
+  const total = remote?.tradeCount ?? 0;
   const lastEquity = equity.length ? equity[equity.length - 1].value : 0;
+
+  if (loading && !remote) {
+    return (
+      <>
+        <Topbar
+          crumb={
+            <>
+              Overview / <b className="font-medium text-foreground">Dashboard</b>
+            </>
+          }
+        />
+        <div className="grid grid-cols-12 gap-4 max-lg:gap-3" aria-label="Loading">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="col-span-12 h-28 animate-pulse rounded-lg border border-border bg-card sm:col-span-6 xl:col-span-3"
+            />
+          ))}
+          <div className="col-span-12 h-64 animate-pulse rounded-lg border border-border bg-card xl:col-span-7" />
+          <div className="col-span-12 h-64 animate-pulse rounded-lg border border-border bg-card xl:col-span-5" />
+        </div>
+      </>
+    );
+  }
+
+  if (error && !remote) {
+    return (
+      <>
+        <Topbar
+          crumb={
+            <>
+              Overview / <b className="font-medium text-foreground">Dashboard</b>
+            </>
+          }
+        />
+        <div className="rounded-lg border border-border bg-card px-4 py-16 text-center">
+          <p className="text-sm text-muted-foreground">
+            Could not load the dashboard: {error}
+          </p>
+          <button
+            type="button"
+            onClick={reload}
+            className="mt-4 h-9 rounded-lg bg-primary px-4 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
+          >
+            Retry
+          </button>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -243,7 +306,7 @@ export function DashboardView() {
             Dashboard
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Your trading performance through Sep 29, 2026.
+            Your trading performance for the selected period.
           </p>
         </div>
         <div
@@ -310,17 +373,10 @@ export function DashboardView() {
             <CardHeader
               title="Equity curve"
               sub={
-                remote ? (
-                  <>
-                    Cumulative net ·{" "}
-                    <span className="font-mono">{usdSigned(lastEquity)}</span>
-                  </>
-                ) : (
-                  <>
-                    Account balance ·{" "}
-                    <span className="font-mono">$37,480.50</span>
-                  </>
-                )
+                <>
+                  Cumulative net ·{" "}
+                  <span className="font-mono">{usdSigned(lastEquity)}</span>
+                </>
               }
               right={<Chip variant="neutral">{period}D</Chip>}
             />

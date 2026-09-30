@@ -15,7 +15,7 @@ import {
   gradeTone,
   loadJournal,
   saveJournal,
-  TODAY,
+  todayKey,
   type JournalData,
   type JournalFile,
 } from "@/lib/dashboard/journal-store";
@@ -83,16 +83,17 @@ function initJournal(): {
   open: Record<string, boolean>;
 } {
   const stored = loadJournal();
+  const today = todayKey();
   const hash =
     typeof window !== "undefined" ? window.location.hash.slice(1) : "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(hash) && stored[hash]?.files.length) {
     return {
       days: stored,
       sel: stored[hash].files[0].id,
-      open: { [TODAY]: true, "2026-09-28": true, [hash]: true },
+      open: { [today]: true, [hash]: true },
     };
   }
-  const day = stored[TODAY]?.files.length ? TODAY : null;
+  const day = stored[today]?.files.length ? today : null;
   const first =
     (day && stored[day].files[0]?.id) ||
     Object.keys(stored)
@@ -104,7 +105,7 @@ function initJournal(): {
   return {
     days: stored,
     sel: first ?? null,
-    open: { [TODAY]: true, "2026-09-28": true },
+    open: first ? { [today]: true } : {},
   };
 }
 
@@ -132,7 +133,6 @@ export function JournalView() {
   });
   // Remote sync: last successfully pushed state (null until first sync).
   const syncedRef = useRef<JournalData | null>(null);
-  const remoteDatesRef = useRef<Set<string>>(new Set());
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* first authed load: pull server state, push local, adopt canonical */
@@ -142,40 +142,30 @@ export function JournalView() {
     (async () => {
       const pulled = await pullJournal();
       if (cancelled || !pulled) return;
-      remoteDatesRef.current = pulled.dates;
       if (pulled.dates.size === 0 && !hasLocalJournal()) {
-        // Fresh account with an empty server: keep seeds for display only.
+        // Fresh account with an empty server: nothing to show yet.
         syncedRef.current = {};
         return;
       }
       const snap = daysRef.current;
-      const pushed = await pushJournal(null, snap, pulled.dates).catch(() => null);
+      const pushed = await pushJournal(null, snap).catch(() => null);
       if (cancelled || !pushed) return;
       const repulled = await pullJournal().catch(() => null);
       if (cancelled || !repulled) {
         syncedRef.current = pushed;
-        remoteDatesRef.current = new Set([
-          ...pulled.dates,
-          ...Object.keys(pushed),
-        ]);
         setDays(pushed);
         return;
       }
       if (JSON.stringify(daysRef.current) === JSON.stringify(snap)) {
         syncedRef.current = repulled.data;
-        remoteDatesRef.current = repulled.dates;
         setDays(repulled.data);
       } else {
         // Edited mid-sync: push the fresh state instead of adopting.
-        const pushed2 = await pushJournal(null, daysRef.current, repulled.dates).catch(
+        const pushed2 = await pushJournal(null, daysRef.current).catch(
           () => null,
         );
         if (cancelled || !pushed2) return;
         syncedRef.current = pushed2;
-        remoteDatesRef.current = new Set([
-          ...repulled.dates,
-          ...Object.keys(pushed2),
-        ]);
         setDays(pushed2);
       }
     })();
@@ -233,7 +223,7 @@ export function JournalView() {
       pushTimer.current = setTimeout(() => {
         const prev = syncedRef.current;
         if (!prev) return;
-        pushJournal(prev, daysRef.current, remoteDatesRef.current)
+        pushJournal(prev, daysRef.current)
           .then((updated) => {
             syncedRef.current = updated;
             setDays(updated);
@@ -345,7 +335,7 @@ export function JournalView() {
               className="absolute h-0 w-0 opacity-0"
               tabIndex={-1}
               aria-hidden="true"
-              value={TODAY}
+              value={todayKey()}
               onChange={(e) => {
                 if (e.target.value) addPage(e.target.value);
               }}
@@ -353,7 +343,7 @@ export function JournalView() {
           </label>
           <button
             type="button"
-            onClick={() => addPage(TODAY)}
+            onClick={() => addPage(todayKey())}
             className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
           >
             <Icon name="plus" />
@@ -525,6 +515,17 @@ export function JournalView() {
                   </div>
                 );
               })
+            ) : sortedDays.length === 0 ? (
+              <div className="px-3 py-8 text-center">
+                <p className="text-sm text-subtle-foreground">No pages yet.</p>
+                <button
+                  type="button"
+                  onClick={() => addPage(todayKey())}
+                  className="mt-3 h-8 rounded-lg bg-primary px-3 text-sm font-medium text-on-primary transition-colors hover:bg-primary-hover"
+                >
+                  New page
+                </button>
+              </div>
             ) : (
               <div className="px-3 py-2 text-sm text-subtle-foreground">
                 No matches
@@ -577,8 +578,9 @@ export function JournalView() {
                     type="button"
                     title="Jump to today"
                     onClick={() => {
-                      if (days[TODAY]?.files[0]) select(days[TODAY].files[0].id);
-                      else addPage(TODAY);
+                      const today = todayKey();
+                      if (days[today]?.files[0]) select(days[today].files[0].id);
+                      else addPage(today);
                     }}
                     className="h-8 rounded-lg border border-border px-3 text-sm font-medium transition-colors hover:bg-accent"
                   >

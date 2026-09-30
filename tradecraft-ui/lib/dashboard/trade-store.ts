@@ -1,5 +1,4 @@
 import { createRng } from "./seed";
-import { getDemoTrades } from "./trades";
 import { LEGACY_NEW_TRADES_KEY, NEW_TRADES_KEY } from "./trade-options";
 import { makeThumb, type ShotRef, type TradeRecord } from "./trade-record";
 import type { ExecutionRow } from "./execution-csv";
@@ -182,31 +181,12 @@ function readUserTrades(): TradeRecord[] {
   }
 }
 
-/** Demo trades plus user trades from localStorage (newest first for users). */
+/** User trades from localStorage, newest first. */
 export function getAllTradeRecords(): TradeRecord[] {
-  return [...readUserTrades().reverse(), ...getDemoTrades()];
+  return readUserTrades().reverse();
 }
 
 /** Local user drafts only, newest first (used to merge unsynced drafts). */
 export function getLocalUserTrades(): TradeRecord[] {
   return readUserTrades().reverse();
-}
-
-export function getTradeRecord(id: string): TradeRecord | undefined {
-  return getAllTradeRecords().find((t) => t.id === id);
-}
-
-export function getDemoTrade(id: string): TradeRecord | undefined {
-  return getDemoTrades().find((t) => t.id === id);
-}
-
-/** Prev/next ids within the merged list order. */
-export function getNeighborIds(id: string): { prev?: string; next?: string } {
-  const all = getAllTradeRecords();
-  const ix = all.findIndex((t) => t.id === id);
-  if (ix < 0) return {};
-  return {
-    ...(ix > 0 ? { prev: all[ix - 1].id } : {}),
-    ...(ix < all.length - 1 ? { next: all[ix + 1].id } : {}),
-  };
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Topbar } from "@/components/dashboard/topbar";
 import {
@@ -217,7 +218,10 @@ export function TradesView() {
   const [session, setSession] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [dir, setDir] = useState<-1 | 1>(-1);
-  const [[cy, cm], setCm] = useState<[number, number]>([2026, 8]);
+  const [[cy, cm], setCm] = useState<[number, number]>(() => {
+    const now = new Date();
+    return [now.getFullYear(), now.getMonth()];
+  });
   const [selDay, setSelDay] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -385,7 +389,21 @@ export function TradesView() {
 
       {!rows.length ? (
         <div className="rounded-lg border border-border bg-card px-4 py-16 text-center text-muted-foreground">
-          No trades match these filters.
+          {all.length === 0 ? (
+            <>
+              No trades yet. Log your first trade to start the log.
+              <div className="mt-4">
+                <Link
+                  href="/trades/new"
+                  className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-on-primary no-underline transition-colors hover:bg-primary-hover"
+                >
+                  New trade
+                </Link>
+              </div>
+            </>
+          ) : (
+            "No trades match these filters."
+          )}
         </div>
       ) : view === "list" ? (
         <div className="overflow-x-auto rounded-lg border border-border bg-card">

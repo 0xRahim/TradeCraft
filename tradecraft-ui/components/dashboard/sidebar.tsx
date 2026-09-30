@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -141,8 +142,14 @@ export function Sidebar() {
           collapsed ? "justify-center px-0" : "",
         ].join(" ")}
       >
-        <span className="grid size-6 flex-none place-items-center rounded-lg bg-primary text-on-primary">
-          <Icon name="logo" className="size-3.5" />
+        <span className="size-6 flex-none overflow-hidden rounded-lg">
+          <Image
+            src="/images/light-logo.png"
+            alt="TradeCraft"
+            width={24}
+            height={24}
+            className="size-6"
+          />
         </span>
         {!collapsed && <span className="flex-1 text-left">TradeCraft</span>}
       </div>
@@ -154,9 +161,9 @@ export function Sidebar() {
           aria-label="New trade"
           title="New trade"
           className={[
-            "flex h-8 flex-1 items-center justify-center gap-2 rounded-lg bg-primary font-medium whitespace-nowrap text-on-primary transition-colors hover:bg-primary-hover",
+            "flex h-8 flex-1 items-center justify-start gap-3 rounded-lg bg-primary px-2.5 font-medium whitespace-nowrap text-on-primary transition-colors hover:bg-primary-hover",
             "focus-visible:outline-2 focus-visible:outline-ring",
-            collapsed ? "flex-none px-0" : "",
+            collapsed ? "justify-center px-0" : "",
           ].join(" ")}
         >
           <Icon name="plus" />

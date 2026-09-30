@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Chip, IconButton, MicroLabel } from "@/components/dashboard/ui";
 import { Icon } from "@/components/dashboard/icons";
+import { ShotLightbox, type LightboxShot } from "@/components/dashboard/lightbox";
 import { useAuth } from "@/lib/auth/auth-context";
 import {
   apiRecordToTradeRecord,
@@ -50,36 +51,47 @@ function toneText(n: number): string {
   return n > 0 ? "text-profit" : n < 0 ? "text-loss" : "";
 }
 
-function ShotGrid({ shots, label }: { shots: TradeRecord["entryShots"]; label: string }) {
+function ShotGrid({
+  shots,
+  label,
+  onOpen,
+}: {
+  shots: TradeRecord["entryShots"];
+  label: string;
+  onOpen?: (i: number) => void;
+}) {
   if (!shots.length) return null;
   return (
     <div>
       <MicroLabel>{label}</MicroLabel>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {shots.map((s, i) => (
-          <div key={`${s.name}-${i}`} className="overflow-hidden rounded-md border border-border bg-background">
+          <button
+            key={`${s.name}-${i}`}
+            type="button"
+            onClick={() => onOpen?.(i)}
+            title={`View ${s.name} full screen`}
+            className="overflow-hidden rounded-md border border-border bg-background text-left transition-colors hover:border-ring focus-visible:outline-2 focus-visible:outline-ring"
+          >
             {s.src ? (
               // Screenshots are user-provided / external snapshot URLs.
               // eslint-disable-next-line @next/next/no-img-element
               <img src={s.src} alt={s.name} loading="lazy" className="h-28 w-full object-cover" />
             ) : s.tvUrl ? (
-              <a
-                href={s.tvUrl}
-                target="_blank"
-                rel="noreferrer"
+              <span
                 className="flex h-28 items-center justify-center p-2 text-center text-xs text-muted-foreground hover:text-foreground hover:underline hover:underline-offset-4"
               >
                 Open TradingView snapshot
-              </a>
+              </span>
             ) : (
-              <div className="flex h-28 items-center justify-center p-2 text-center font-mono text-xs text-subtle-foreground">
+              <span className="flex h-28 items-center justify-center p-2 text-center font-mono text-xs text-subtle-foreground">
                 {s.name}
-              </div>
+              </span>
             )}
-            <div className="truncate px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
+            <span className="block truncate px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
               {s.tvUrl ? "TV · " : ""}{s.name}
-            </div>
-          </div>
+            </span>
+          </button>
         ))}
       </div>
     </div>
@@ -117,6 +129,16 @@ export function TradeDetailView({ tradeId }: { tradeId: string }) {
   const resolvedTrade = useResolvedShots(apiTradeShots);
   const entryShots = apiRec ? resolvedEntry : (t?.entryShots ?? []);
   const tradeShots = apiRec ? resolvedTrade : (t?.tradeShots ?? []);
+  // Combined viewer list (entry shots first).
+  const lightboxShots: LightboxShot[] = useMemo(() => {
+    const entries = apiRec ? resolvedEntry : (t?.entryShots ?? []);
+    const trades = apiRec ? resolvedTrade : (t?.tradeShots ?? []);
+    return [
+      ...entries.map((s) => ({ ...s, section: "Entry" })),
+      ...trades.map((s) => ({ ...s, section: "Trade" })),
+    ];
+  }, [apiRec, resolvedEntry, resolvedTrade, t]);
+  const [lightbox, setLightbox] = useState<number | null>(null);
   const nav = useMemo(() => {
     const ix = log.findIndex((x) => x.id === tradeId);
     if (ix < 0) return {};
@@ -281,11 +303,29 @@ export function TradeDetailView({ tradeId }: { tradeId: string }) {
           <section className="min-w-0 rounded-lg border border-border bg-card p-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base leading-6 font-semibold">Screenshots</h2>
+              {lightboxShots.length ? (
+                <button
+                  type="button"
+                  onClick={() => setLightbox(0)}
+                  className="flex h-8 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <Icon name="expand" />
+                  Full screen
+                </button>
+              ) : null}
             </div>
             {entryShots.length || tradeShots.length ? (
               <div className="grid gap-4">
-                <ShotGrid shots={entryShots} label="Entry model" />
-                <ShotGrid shots={tradeShots} label="Trade" />
+                <ShotGrid
+                  shots={entryShots}
+                  label="Entry model"
+                  onOpen={(i) => setLightbox(i)}
+                />
+                <ShotGrid
+                  shots={tradeShots}
+                  label="Trade"
+                  onOpen={(i) => setLightbox(entryShots.length + i)}
+                />
               </div>
             ) : (
               <div>
@@ -509,6 +549,14 @@ export function TradeDetailView({ tradeId }: { tradeId: string }) {
           </div>
         </section>
       </div>
+      {lightbox != null && lightboxShots.length ? (
+        <ShotLightbox
+          shots={lightboxShots}
+          index={Math.min(lightbox, lightboxShots.length - 1)}
+          onClose={() => setLightbox(null)}
+          onIndex={setLightbox}
+        />
+      ) : null}
     </>
   );
 }

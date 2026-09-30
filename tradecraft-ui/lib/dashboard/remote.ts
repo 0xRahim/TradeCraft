@@ -6,13 +6,11 @@ import { useAuth } from "@/lib/auth/auth-context";
 import type { ExecutionRow } from "@/lib/dashboard/execution-csv";
 import { createRng } from "@/lib/dashboard/seed";
 import { makeThumb, type TradeRecord } from "@/lib/dashboard/trade-record";
-import { getDemoTrades } from "@/lib/dashboard/trades";
 import { getAllTradeRecords, getLocalUserTrades } from "@/lib/dashboard/trade-store";
 import {
   JOURNAL_KEY,
   LEGACY_JOURNAL_KEY,
   loadJournal,
-  seedJournal,
   type JournalData,
 } from "@/lib/dashboard/journal-store";
 import {
@@ -308,15 +306,17 @@ export async function loadRemoteUserTrades(): Promise<TradeRecord[]> {
   return listRemoteTrades();
 }
 
-/** Remote user trades plus local demo trades (demos never leave the browser). */
+/** Remote user trades plus unsynced local drafts (newest first). */
 export async function loadTradeLog(): Promise<TradeRecord[]> {
   const remote = await loadRemoteUserTrades();
-  return [...remote, ...getDemoTrades()];
+  const localUser = getLocalUserTrades();
+  const remoteIds = new Set(remote.map((t) => t.id));
+  return [...remote, ...localUser.filter((t) => !remoteIds.has(t.id))];
 }
 
 /**
- * Merged trade log for views: remote user trades + unsynced local drafts +
- * demos when authed, otherwise the local list. Instant local paint, remote
+ * Merged trade log for views: remote user trades + unsynced local drafts
+ * when authed, otherwise the local list. Instant local paint, remote
  * upgrade when the session is ready.
  */
 export function useTradeLog(): TradeRecord[] {
@@ -342,7 +342,7 @@ export function useTradeLog(): TradeRecord[] {
     const localUser = getLocalUserTrades();
     const remoteIds = new Set(remote.map((t) => t.id));
     const unsynced = localUser.filter((t) => !remoteIds.has(t.id));
-    return [...remote, ...unsynced, ...getDemoTrades()];
+    return [...remote, ...unsynced];
   }, [remote, local, status]);
 }
 
@@ -409,22 +409,40 @@ export function getDashboard(params: {
 /** Fetch remote dashboard data when authed, else null (caller keeps seeds). */
 export function useRemoteDashboard(period: number, anchor = 0) {
   const { status } = useAuth();
-  const [data, setData] = useState<DashboardPayload | null>(null);
+  const [snapshot, setSnapshot] = useState<{
+    data: DashboardPayload | null;
+    error: string | null;
+  }>({ data: null, error: null });
+  const [nonce, setNonce] = useState(0);
   useEffect(() => {
     if (status !== "authed") return;
     let cancelled = false;
     getDashboard({ period, anchor })
       .then((d) => {
-        if (!cancelled) setData(d);
+        if (!cancelled) setSnapshot({ data: d, error: null });
       })
-      .catch(() => {
-        if (!cancelled) setData(null);
+      .catch((err) => {
+        if (!cancelled) {
+          setSnapshot({
+            data: null,
+            error: err instanceof Error ? err.message : "Could not load the dashboard.",
+          });
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [status, period, anchor]);
-  return data;
+  }, [status, period, anchor, nonce]);
+  const reload = useMemo(
+    () => () => {
+      // Event-handler state updates are fine; the nonce retriggers the fetch.
+      setSnapshot({ data: null, error: null });
+      setNonce((n) => n + 1);
+    },
+    [],
+  );
+  const loading = status === "authed" && !snapshot.data && !snapshot.error;
+  return { data: snapshot.data, loading, error: snapshot.error, reload };
 }
 
 // ---------- uploads ----------
@@ -606,33 +624,21 @@ function journalDataFromRemote(
   return out;
 }
 
-function seedEquals(date: string, day: { g: number | null; o: string; files: { id: string; n: string; b: string }[] }): boolean {
-  const seeds = seedJournal();
-  const s = seeds[date];
-  if (!s) return false;
-  return JSON.stringify(s) === JSON.stringify(day);
-}
-
 const isUuidLike = (id: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 /**
  * Push local journal state to the API. `prev` is the last pushed state
  * (null = first push: PUT all days, PATCH known-uuid files, POST temp files).
- * Untouched seed days absent from the server are never uploaded.
  * Returns the updated state (temp ids replaced by server uuids).
  */
 export async function pushJournal(
   prev: JournalData | null,
   next: JournalData,
-  remoteDates: Set<string>,
 ): Promise<JournalData> {
   const out: JournalData = JSON.parse(JSON.stringify(next));
   for (const date of Object.keys(out)) {
     const day = out[date];
-    // Never upload untouched seed days (fresh accounts keep seeds locally).
-    const known = prev?.[date];
-    if (!known && seedEquals(date, day) && !remoteDates.has(date)) continue;
     await putJournalDay(date, { grade: day.g, status: day.o });
     const prevFiles = prev?.[date]?.files ?? [];
     const prevById = new Map(prevFiles.map((f) => [f.id, f]));
@@ -717,8 +723,4 @@ export function hasLocalJournal(): boolean {
 
 export function localJournalSnapshot(): JournalData {
   return loadJournal();
-}
-
-export function seedFor(date: string): JournalData[string] | null {
-  return seedJournal()[date] ?? null;
 }
