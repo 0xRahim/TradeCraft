@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { readJsonBody } from "../../../../lib/auth-helpers.js";
-import { authorizedUser } from "../../../../lib/auth.js";
-import { applyCors, sendError } from "../../../../lib/cors.js";
-import { loadDayRow } from "../../../../lib/journal.js";
-import { getServiceClient } from "../../../../lib/supabase.js";
-import { asString, asTrimmed, isDateString, isUuid } from "../../../../lib/validate.js";
+import { readJsonBody } from "../auth-helpers.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { loadDayRow } from "../journal.js";
+import { getServiceClient } from "../supabase.js";
+import { asString, asTrimmed, isDateString, isUuid } from "../validate.js";
 
 function param(req: VercelRequest, key: string): string {
   const raw = req.query[key];
@@ -15,7 +15,7 @@ function param(req: VercelRequest, key: string): string {
  * PATCH /api/journal/[date]/files/[fileId] — rename/edit ({ name?, body? }).
  * DELETE — remove the file → 204.
  */
-export default async function handler(
+export async function handleJournalFile(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

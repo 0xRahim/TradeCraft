@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { authorizedUser } from "../lib/auth.js";
-import { applyCors, sendError } from "../lib/cors.js";
-import { loadDayFiles } from "../lib/journal.js";
-import { getServiceClient } from "../lib/supabase.js";
-import { isMonthString } from "../lib/validate.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { loadDayFiles } from "../journal.js";
+import { getServiceClient } from "../supabase.js";
+import { isMonthString } from "../validate.js";
 
 function currentMonthUTC(): string {
   const now = new Date();
@@ -23,7 +23,7 @@ function nextMonth(month: string): string {
  * GET /api/journal?month=YYYY-MM
  * Month overview without file bodies.
  */
-export default async function handler(
+export async function handleJournal(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

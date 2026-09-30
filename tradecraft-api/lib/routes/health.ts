@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { applyCors, sendError } from "../lib/cors.js";
+import { applyCors, sendError } from "../cors.js";
 
-export default function handler(req: VercelRequest, res: VercelResponse): void {
+export function handleHealth(req: VercelRequest, res: VercelResponse): void {
   if (applyCors(req, res)) return;
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");

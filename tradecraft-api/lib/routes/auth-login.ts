@@ -5,16 +5,16 @@ import {
   readJsonBody,
   toPublicSession,
   toPublicUser,
-} from "../../lib/auth-helpers.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { getAnonClient } from "../../lib/supabase-public.js";
+} from "../auth-helpers.js";
+import { applyCors, sendError } from "../cors.js";
+import { getAnonClient } from "../supabase-public.js";
 
 /**
  * POST /api/auth/login
  * Body: { email, password }
  * 200 { user, session }
  */
-export default async function handler(
+export async function handleAuthLogin(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

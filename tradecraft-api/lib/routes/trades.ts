@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { readJsonBody } from "../lib/auth-helpers.js";
-import { authorizedUser } from "../lib/auth.js";
-import { applyCors, sendError } from "../lib/cors.js";
-import { getServiceClient } from "../lib/supabase.js";
-import { loadRecords } from "../lib/trade-loader.js";
+import { readJsonBody } from "../auth-helpers.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { getServiceClient } from "../supabase.js";
+import { loadRecords } from "../trade-loader.js";
 import {
   draftToRow,
   executionToRow,
@@ -12,8 +12,8 @@ import {
   type TradeRow,
   type WireExecution,
   type WireShot,
-} from "../lib/trades-map.js";
-import { asLimit, asOffset } from "../lib/validate.js";
+} from "../trades-map.js";
+import { asLimit, asOffset } from "../validate.js";
 
 function escapeIlike(v: string): string {
   return v.replace(/[%(),\\]/g, (c) => `\\${c}`);
@@ -80,7 +80,7 @@ async function handleList(req: VercelRequest, res: VercelResponse): Promise<void
       return;
     }
     const rows = (data ?? []) as TradeRow[];
-    const { capturedR } = await import("../lib/trades-map.js");
+    const { capturedR } = await import("../trades-map.js");
     rows.sort((a, b) => {
       const ra = capturedR({
         rr: typeof a["rr"] === "string" ? a["rr"] : "",
@@ -203,7 +203,7 @@ async function handleCreate(
 /**
  * /api/trades — GET (list) / POST (create)
  */
-export default async function handler(
+export async function handleTrades(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { getServiceClient } from "../../lib/supabase.js";
+import { applyCors, sendError } from "../cors.js";
+import { getServiceClient } from "../supabase.js";
 
 /**
  * POST /api/auth/logout
@@ -8,7 +8,7 @@ import { getServiceClient } from "../../lib/supabase.js";
  * service-role key is configured). The client must discard its stored
  * session regardless. Always 200 { signedOut: true }.
  */
-export default async function handler(
+export async function handleAuthLogout(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

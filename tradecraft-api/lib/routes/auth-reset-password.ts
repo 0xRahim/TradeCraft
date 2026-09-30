@@ -1,7 +1,7 @@
 import { createClient, type User } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { mapAuthError, readJsonBody, toPublicUser } from "../../lib/auth-helpers.js";
-import { applyCors, sendError } from "../../lib/cors.js";
+import { mapAuthError, readJsonBody, toPublicUser } from "../auth-helpers.js";
+import { applyCors, sendError } from "../cors.js";
 
 /**
  * POST /api/auth/reset-password
@@ -14,7 +14,7 @@ import { applyCors, sendError } from "../../lib/cors.js";
  *
  * 200 { user }
  */
-export default async function handler(
+export async function handleAuthResetPassword(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

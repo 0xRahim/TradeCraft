@@ -1,16 +1,16 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { toPublicUser } from "../../lib/auth-helpers.js";
-import { requireUser } from "../../lib/auth.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { getServiceClient } from "../../lib/supabase.js";
-import { getAnonClient } from "../../lib/supabase-public.js";
+import { toPublicUser } from "../auth-helpers.js";
+import { requireUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { getServiceClient } from "../supabase.js";
+import { getAnonClient } from "../supabase-public.js";
 
 /**
  * GET /api/auth/me
  * Header: Authorization: Bearer <access token>
  * 200 { user } — validates the session for route guards / boot.
  */
-export default async function handler(
+export async function handleAuthMe(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

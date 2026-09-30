@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { readJsonBody } from "../../lib/auth-helpers.js";
-import { authorizedUser } from "../../lib/auth.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { getServiceClient } from "../../lib/supabase.js";
-import { removeTradeObjects } from "../../lib/storage-helpers.js";
-import { loadRecords, loadTradeRow } from "../../lib/trade-loader.js";
+import { readJsonBody } from "../auth-helpers.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { getServiceClient } from "../supabase.js";
+import { removeTradeObjects } from "../storage-helpers.js";
+import { loadRecords, loadTradeRow } from "../trade-loader.js";
 import {
   draftToRow,
   executionBrokerId,
@@ -16,8 +16,8 @@ import {
   type TradeRow,
   type WireExecution,
   type WireShot,
-} from "../../lib/trades-map.js";
-import { isUuid } from "../../lib/validate.js";
+} from "../trades-map.js";
+import { isUuid } from "../validate.js";
 
 function tradeIdFrom(req: VercelRequest): string {
   const raw = req.query["id"];
@@ -230,7 +230,7 @@ async function handleDelete(
 /**
  * /api/trades/[id] — GET / PATCH / DELETE
  */
-export default async function handler(
+export async function handleTradeById(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

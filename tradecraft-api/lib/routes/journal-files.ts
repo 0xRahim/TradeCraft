@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { readJsonBody } from "../../../lib/auth-helpers.js";
-import { authorizedUser } from "../../../lib/auth.js";
-import { applyCors, sendError } from "../../../lib/cors.js";
-import { ensureDay } from "../../../lib/journal.js";
-import { getServiceClient } from "../../../lib/supabase.js";
-import { asString, asTrimmed, isDateString } from "../../../lib/validate.js";
+import { readJsonBody } from "../auth-helpers.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { ensureDay } from "../journal.js";
+import { getServiceClient } from "../supabase.js";
+import { asString, asTrimmed, isDateString } from "../validate.js";
 
 function dateFrom(req: VercelRequest): string {
   const raw = req.query["date"];
@@ -15,7 +15,7 @@ function dateFrom(req: VercelRequest): string {
  * POST /api/journal/[date]/files — { name, body } → 201 file JSON.
  * Auto-creates the day row (grade null, status "pending").
  */
-export default async function handler(
+export async function handleJournalFiles(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

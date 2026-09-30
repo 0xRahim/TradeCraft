@@ -4,16 +4,16 @@ import {
   readJsonBody,
   toPublicSession,
   toPublicUser,
-} from "../../lib/auth-helpers.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { getAnonClient } from "../../lib/supabase-public.js";
+} from "../auth-helpers.js";
+import { applyCors, sendError } from "../cors.js";
+import { getAnonClient } from "../supabase-public.js";
 
 /**
  * POST /api/auth/refresh
  * Body: { refresh_token }
  * 200 { user, session }
  */
-export default async function handler(
+export async function handleAuthRefresh(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

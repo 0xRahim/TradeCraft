@@ -2,16 +2,16 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import {
   isValidEmail,
   readJsonBody,
-} from "../../lib/auth-helpers.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { getAnonClient, getFrontendUrl } from "../../lib/supabase-public.js";
+} from "../auth-helpers.js";
+import { applyCors, sendError } from "../cors.js";
+import { getAnonClient, getFrontendUrl } from "../supabase-public.js";
 
 /**
  * POST /api/auth/forgot-password
  * Body: { email }
  * Always 200 { sent: true } to avoid account enumeration.
  */
-export default async function handler(
+export async function handleAuthForgotPassword(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

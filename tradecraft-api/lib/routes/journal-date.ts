@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { readJsonBody } from "../../lib/auth-helpers.js";
-import { authorizedUser } from "../../lib/auth.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { loadDay } from "../../lib/journal.js";
-import { getServiceClient } from "../../lib/supabase.js";
-import { asGrade, asTrimmed, isDateString } from "../../lib/validate.js";
+import { readJsonBody } from "../auth-helpers.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { loadDay } from "../journal.js";
+import { getServiceClient } from "../supabase.js";
+import { asGrade, asTrimmed, isDateString } from "../validate.js";
 
 function dateFrom(req: VercelRequest): string {
   const raw = req.query["date"];
@@ -15,7 +15,7 @@ function dateFrom(req: VercelRequest): string {
  * GET /api/journal/[date] — day with file bodies (404 when untouched).
  * PUT /api/journal/[date] — upsert { grade: 1..10|null, status }.
  */
-export default async function handler(
+export async function handleJournalDate(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

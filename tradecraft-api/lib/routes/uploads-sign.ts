@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { readJsonBody } from "../../lib/auth-helpers.js";
-import { authorizedUser } from "../../lib/auth.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { SHOTS_BUCKET } from "../../lib/storage-helpers.js";
-import { getServiceClient } from "../../lib/supabase.js";
-import { loadTradeRow } from "../../lib/trade-loader.js";
-import { asShotKind, isUuid, sanitizeFilename } from "../../lib/validate.js";
+import { readJsonBody } from "../auth-helpers.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { SHOTS_BUCKET } from "../storage-helpers.js";
+import { getServiceClient } from "../supabase.js";
+import { loadTradeRow } from "../trade-loader.js";
+import { asShotKind, isUuid, sanitizeFilename } from "../validate.js";
 
 /**
  * POST /api/uploads/sign — signed upload URL for a screenshot.
@@ -17,7 +17,7 @@ import { asShotKind, isUuid, sanitizeFilename } from "../../lib/validate.js";
  * GET /api/uploads/sign?path=… — short-lived signed read URL (60s).
  * The bucket stays private; `path` must start with the caller's user id.
  */
-export default async function handler(
+export async function handleUploadsSign(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

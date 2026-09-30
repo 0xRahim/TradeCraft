@@ -5,9 +5,9 @@ import {
   readJsonBody,
   toPublicSession,
   toPublicUser,
-} from "../../lib/auth-helpers.js";
-import { applyCors, sendError } from "../../lib/cors.js";
-import { getAnonClient } from "../../lib/supabase-public.js";
+} from "../auth-helpers.js";
+import { applyCors, sendError } from "../cors.js";
+import { getAnonClient } from "../supabase-public.js";
 
 /**
  * POST /api/auth/signup
@@ -15,7 +15,7 @@ import { getAnonClient } from "../../lib/supabase-public.js";
  * 201 { user, session } — or 200 { user, confirmationRequired: true }
  * when email confirmations are enabled in Supabase Auth.
  */
-export default async function handler(
+export async function handleAuthSignup(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {

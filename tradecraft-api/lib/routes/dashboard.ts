@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { computeDashboard, type AggTrade } from "../lib/aggregate.js";
-import { authorizedUser } from "../lib/auth.js";
-import { applyCors, sendError } from "../lib/cors.js";
-import { getServiceClient } from "../lib/supabase.js";
-import { asPeriod, isMonthString } from "../lib/validate.js";
+import { computeDashboard, type AggTrade } from "../aggregate.js";
+import { authorizedUser } from "../auth.js";
+import { applyCors, sendError } from "../cors.js";
+import { getServiceClient } from "../supabase.js";
+import { asPeriod, isMonthString } from "../validate.js";
 
 function currentMonthUTC(): string {
   const now = new Date();
@@ -30,7 +30,7 @@ function strArr(v: unknown): string[] {
  * GET /api/dashboard?period=7|30|60|90|180&month=YYYY-MM&anchor=
  * Aggregates over the caller's trades. See API.md for the formulas.
  */
-export default async function handler(
+export async function handleDashboard(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
