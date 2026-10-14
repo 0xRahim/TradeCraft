@@ -83,7 +83,37 @@ export async function handleUploadsSign(
 
   if (req.method === "GET") {
     const raw = req.query["path"];
-    const path = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
+    // Production rewrites used to forward the `:path*` placeholder as a
+    // `path` query param (`?path=uploads/sign`), colliding with this
+    // endpoint's own `?path=<storage path>` and arriving as an array.
+    // Prefer the entry owned by the caller; fall back to the raw URL.
+    const candidates = Array.isArray(raw) ? raw : [raw ?? ""];
+    const owned = candidates.find(
+      (c): c is string =>
+        typeof c === "string" && c.startsWith(`${userId}/`),
+    );
+    let path = owned ?? candidates.find((c) => typeof c === "string" && c) ?? "";
+    if (typeof path !== "string") path = "";
+    if (
+      (!path || !path.startsWith(`${userId}/`)) &&
+      typeof req.url === "string" &&
+      req.url.includes("?")
+    ) {
+      // The rewrite artifact may have overwritten the real value in
+      // `req.query` (single string instead of an array). The raw URL keeps
+      // every `path=` occurrence — the storage path is the last one.
+      const q = req.url.split("?")[1] ?? "";
+      for (const part of q.split("&")) {
+        const [k, ...rest] = part.split("=");
+        if (k === "path" && rest.length) {
+          try {
+            path = decodeURIComponent(rest.join("="));
+          } catch {
+            path = rest.join("=");
+          }
+        }
+      }
+    }
     if (!path || !path.startsWith(`${userId}/`) || path.includes("..")) {
       sendError(res, 400, "bad_request", "Invalid storage path.");
       return;
