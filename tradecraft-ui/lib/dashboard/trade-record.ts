@@ -19,6 +19,7 @@ export type ShotRef = {
   name: string;
   src?: string;
   tvUrl?: string;
+  storagePath?: string;
 };
 
 /**

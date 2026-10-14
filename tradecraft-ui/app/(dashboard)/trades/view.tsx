@@ -41,6 +41,7 @@ import {
   RCELL,
   SessionCell,
   SourceChip,
+  TradeCover,
   TradeDate,
   TradeThumb,
   ValidityChip,
@@ -151,10 +152,10 @@ function TradeModal({
           </IconButton>
         </div>
         <div className="relative aspect-video border-b border-border bg-background">
-          <span
-            className="absolute inset-0 [&>svg]:h-full [&>svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: trade.thumb }}
-            aria-hidden="true"
+          <TradeCover
+            key={trade.id}
+            trade={trade}
+            className="absolute inset-0 h-full w-full object-cover [&>svg]:h-full [&>svg]:w-full"
           />
         </div>
         <div className="grid grid-cols-2 gap-4 p-6 md:grid-cols-3">
@@ -487,10 +488,9 @@ export function TradesView() {
               className="overflow-hidden rounded-lg border border-border bg-card text-left transition-colors hover:border-ring focus-visible:outline-2 focus-visible:outline-ring"
             >
               <div className="relative aspect-video border-b border-border bg-background">
-                <span
-                  className="absolute inset-0 [&>svg]:h-full [&>svg]:w-full"
-                  dangerouslySetInnerHTML={{ __html: t.thumb }}
-                  aria-hidden="true"
+                <TradeCover
+                  trade={t}
+                  className="absolute inset-0 h-full w-full object-cover [&>svg]:h-full [&>svg]:w-full"
                 />
                 <span className="absolute top-3 left-3">
                   <Chip>{t.side === "long" ? "LONG" : "SHORT"}</Chip>

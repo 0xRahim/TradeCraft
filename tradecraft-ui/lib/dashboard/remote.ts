@@ -263,11 +263,13 @@ export function apiRecordToTradeRecord(rec: ApiTradeRecord): TradeRecord | null 
       name: str(s.name),
       ...(s.srcUrl ? { src: s.srcUrl } : {}),
       ...(s.tvUrl ? { tvUrl: s.tvUrl } : {}),
+      ...(s.storagePath ? { storagePath: s.storagePath } : {}),
     })),
     tradeShots: (Array.isArray(rec.tradeShots) ? rec.tradeShots : []).map((s) => ({
       name: str(s.name),
       ...(s.srcUrl ? { src: s.srcUrl } : {}),
       ...(s.tvUrl ? { tvUrl: s.tvUrl } : {}),
+      ...(s.storagePath ? { storagePath: s.storagePath } : {}),
     })),
     thumb: "",
     createdAt: str(rec.createdAt) || new Date().toISOString(),

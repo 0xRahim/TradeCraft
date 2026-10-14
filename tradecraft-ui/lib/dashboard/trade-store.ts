@@ -26,6 +26,9 @@ function shotRefs(v: unknown): ShotRef[] {
               name: o["name"] as string,
               ...(typeof o["src"] === "string" ? { src: o["src"] as string } : {}),
               ...(typeof o["tvUrl"] === "string" ? { tvUrl: o["tvUrl"] as string } : {}),
+              ...(typeof o["storagePath"] === "string" && o["storagePath"]
+                ? { storagePath: o["storagePath"] as string }
+                : {}),
             },
           ]
         : [];
