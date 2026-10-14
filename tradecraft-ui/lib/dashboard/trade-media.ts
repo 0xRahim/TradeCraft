@@ -27,6 +27,12 @@ export function shotFromFile(file: File): Shot {
   };
 }
 
+/** Compress (balanced preset) then build a Shot. Never throws. */
+export async function shotFromCompressedFile(file: File): Promise<Shot> {
+  const { compressImageFile } = await import("./image-compress");
+  return shotFromFile(await compressImageFile(file));
+}
+
 const IMG_EXT = /\.(png|jpe?g|webp|gif)(\?.*)?$/i;
 
 /**

@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, type ClipboardEvent } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import type { ReactNode } from "react";
 import {
   nextShotId,
   normalizeTvUrl,
-  shotFromFile,
+  revokeShots,
+  shotFromCompressedFile,
   type Shot,
 } from "@/lib/dashboard/trade-media";
 import { MicroLabel } from "./ui";
@@ -217,10 +218,24 @@ export function ShotField({
   const [urlError, setUrlError] = useState("");
   const zoneRef = useRef<HTMLDivElement>(null);
 
+  const shotsRef = useRef(shots);
+  useEffect(() => {
+    shotsRef.current = shots;
+  }, [shots]);
+  const addSeq = useRef(0);
+
   const addFiles = (files: File[]) => {
     const imgs = files.filter((f) => f.type.startsWith("image/"));
     if (!imgs.length) return;
-    onChange([...shots, ...imgs.map(shotFromFile)]);
+    const seq = (addSeq.current += 1);
+    void Promise.all(imgs.map((f) => shotFromCompressedFile(f))).then((newShots) => {
+      if (seq !== addSeq.current) {
+        // Superseded by a newer batch — drop these previews to avoid leaks.
+        revokeShots(newShots);
+        return;
+      }
+      onChange([...shotsRef.current, ...newShots]);
+    });
   };
 
   const onPaste = (e: ClipboardEvent) => {
