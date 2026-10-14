@@ -29,6 +29,7 @@ import {
 import {
   parseBrokerTime,
   parseExecutionCsv,
+  parseMt5Html,
   toDateInput,
   toTimeInput,
   type ExecutionRow,
@@ -198,18 +199,39 @@ export function NewTradeView() {
     applySelection(ids, execs);
   }
 
-  function onCsvText(text: string) {
+  function onImportText(text: string, fileName: string) {
     try {
-      const rows = parseExecutionCsv(text);
+      const isHtml =
+        /\.html?$/i.test(fileName) || /<html[\s>]/i.test(text.slice(0, 2000));
+      const rows = isHtml ? parseMt5Html(text) : parseExecutionCsv(text);
       if (!rows.length) {
-        setCsvError("No execution rows found. Check the CSV format.");
+        setCsvError(
+          isHtml
+            ? "No position rows found. Check this is an MT5 Trade History Report (.html)."
+            : "No execution rows found. Check the CSV format.",
+        );
         return;
       }
       setCsvError("");
       setExecs(rows);
     } catch {
-      setCsvError("Could not parse this CSV file.");
+      setCsvError("Could not parse this file.");
     }
+  }
+
+  /** MT5 exports UTF-16; sniff the BOM so both CSV (UTF-8) and HTML decode correctly. */
+  function decodeImportFile(file: File): Promise<{ text: string; name: string }> {
+    return file.arrayBuffer().then((buf) => {
+      const bytes = new Uint8Array(buf);
+      let encoding = "utf-8";
+      if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe)
+        encoding = "utf-16le";
+      else if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff)
+        encoding = "utf-16be";
+      else if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)
+        encoding = "utf-8";
+      return { text: new TextDecoder(encoding).decode(buf), name: file.name };
+    });
   }
 
   /* Net P&L follows gross + swap + commission unless overridden. */
@@ -334,7 +356,7 @@ export function NewTradeView() {
         <div>
           <h1 className="text-2xl leading-8 font-medium tracking-tight">New trade</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Sync executions from CSV, then journal the idea.
+            Sync executions from CSV or MT5 report, then journal the idea.
           </p>
         </div>
         <Link
@@ -352,20 +374,23 @@ export function NewTradeView() {
           <Card>
             <CardHeader
               title="Sync & orders"
-              sub="Upload CSV to sync order / execution history"
+              sub="Upload CSV or MT5 report to sync order / execution history"
               right={execs.length ? <Chip variant="neutral">{execs.length} rows</Chip> : undefined}
             />
             <div className="grid gap-3">
               <label className="flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input px-3 py-4 text-center text-sm text-muted-foreground transition-colors hover:bg-surface-high hover:text-foreground">
-                <span className="font-medium text-foreground">Upload execution CSV</span>
-                <span className="font-mono text-xs">ID, Symbol, Open Time, Volume, Side, … Profit, Reason</span>
+                <span className="font-medium text-foreground">Upload execution CSV or MT5 report</span>
+                <span className="font-mono text-xs">CSV: ID, Symbol, Open Time, … · MT5: Trade History Report (.html)</span>
                 <input
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".csv,text/csv,.html,.htm,text/html"
                   className="sr-only"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) void f.text().then(onCsvText);
+                    if (f)
+                      void decodeImportFile(f).then(({ text, name }) =>
+                        onImportText(text, name),
+                      );
                     e.target.value = "";
                   }}
                 />
