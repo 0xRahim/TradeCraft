@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth/auth-context";
 import type { ExecutionRow } from "@/lib/dashboard/execution-csv";
 import { createRng } from "@/lib/dashboard/seed";
+import { resolveCachedShotSrc } from "@/lib/dashboard/shot-cache";
 import { makeThumb, type TradeRecord } from "@/lib/dashboard/trade-record";
 import { getAllTradeRecords, getLocalUserTrades } from "@/lib/dashboard/trade-store";
 import {
@@ -510,7 +511,7 @@ export async function resolveShotSrc(storagePath: string): Promise<string | null
 
 export type ShotRef = { name: string; src?: string; tvUrl?: string };
 
-/** Resolve wire shots (storagePath → signed URL) into renderable ShotRefs. */
+/** Resolve wire shots (storagePath → cached bytes) into renderable ShotRefs. */
 export function useResolvedShots(shots: ApiShot[]): ShotRef[] {
   const base = useMemo(
     () =>
@@ -527,7 +528,13 @@ export function useResolvedShots(shots: ApiShot[]): ShotRef[] {
     const pending = shots.filter((s) => s.storagePath && !s.srcUrl);
     if (!pending.length) return;
     let cancelled = false;
-    Promise.all(pending.map((s) => resolveShotSrc(s.storagePath as string))).then(
+    Promise.all(
+      pending.map((s) =>
+        resolveCachedShotSrc(s.storagePath as string, () =>
+          signRead(s.storagePath as string).then((r) => r.signedUrl),
+        ),
+      ),
+    ).then(
       (urls) => {
         if (cancelled) return;
         const next: Record<string, string> = {};
