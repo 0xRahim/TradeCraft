@@ -264,6 +264,13 @@ export function TradeDetailView({ tradeId }: { tradeId: string }) {
               <Icon name="r" />
             </IconButton>
             <Link
+              href={`/trades/${t.id}/edit`}
+              className="flex h-9 items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium whitespace-nowrap text-foreground transition-colors hover:bg-accent"
+            >
+              <Icon name="edit" />
+              Edit
+            </Link>
+            <Link
               href={`/journal#${t.tradeDate}`}
               className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium whitespace-nowrap text-on-primary no-underline transition-colors hover:bg-primary-hover"
             >

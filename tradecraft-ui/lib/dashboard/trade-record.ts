@@ -11,6 +11,7 @@ import {
   SESSIONS,
 } from "./trade-options";
 import type { ExecutionRow } from "./execution-csv";
+import type { NewTradeDraft } from "./trade-options";
 
 export type TradeSource = "demo" | "user";
 
@@ -108,6 +109,54 @@ export function recordR(r: TradeRecord): number {
 
 export function outcomeTone(o: TradeRecord["outcome"]): "profit" | "loss" | "neutral" {
   return o === "TP" ? "profit" : o === "SL" ? "loss" : "neutral";
+}
+
+/** Prefill an editable draft from a stored record (numbers back to strings). */
+export function recordToDraft(r: TradeRecord): NewTradeDraft {
+  const f = (n: number, dp = 5): string =>
+    Number.isFinite(n) ? String(Number(n.toFixed(dp))) : "";
+  const auto = r.gross + r.swap + r.commission;
+  return {
+    pair: r.pair,
+    side: r.side,
+    orderIds: [...r.orderIds],
+    outcome: r.outcome,
+    session: r.session,
+    prevDay: r.prevDay,
+    h4Trend: r.h4Trend,
+    phase: r.phase,
+    model: r.model,
+    mechanicsContext: r.mechanicsContext,
+    entries: [...r.entries],
+    execType: r.execType,
+    alignment: r.alignment,
+    pois: [...r.pois],
+    rr: r.rr,
+    rrCustom: r.rrCustom,
+    riskPct: r.riskPct,
+    riskCustom: r.riskCustom,
+    tradeDate: r.tradeDate,
+    inducementTime: r.inducementTime,
+    entryTime: r.entryTime,
+    exitTime: r.exitTime,
+    openPrice: f(r.openPrice),
+    slPrice: f(r.slPrice),
+    closePrice: f(r.closePrice),
+    tpPrice: f(r.tpPrice),
+    lots: f(r.lots, 2),
+    pips: f(r.pips, 2),
+    pipsPoints: r.pipsPoints,
+    gross: f(r.gross, 2),
+    swap: f(r.swap, 2),
+    commission: f(r.commission, 2),
+    net: f(r.net, 2),
+    netOverride: Math.abs(auto - r.net) > 1e-9,
+    sessionAuto: false,
+    validity: r.validity,
+    psychTags: [...r.psychTags],
+    psychNote: r.psychNote,
+    notes: r.notes,
+  };
 }
 
 /** Base price + decimals per pair for demo generation and price formatting. */

@@ -190,3 +190,38 @@ export function getAllTradeRecords(): TradeRecord[] {
 export function getLocalUserTrades(): TradeRecord[] {
   return readUserTrades().reverse();
 }
+
+function localTradesKey(): string {
+  if (typeof window === "undefined") return NEW_TRADES_KEY;
+  try {
+    if (window.localStorage.getItem(NEW_TRADES_KEY) != null) return NEW_TRADES_KEY;
+    if (window.localStorage.getItem(LEGACY_NEW_TRADES_KEY) != null)
+      return LEGACY_NEW_TRADES_KEY;
+  } catch {
+    /* storage unavailable */
+  }
+  return NEW_TRADES_KEY;
+}
+
+/** Replace one local draft by id. False when missing or storage fails. */
+export function updateLocalTrade(id: string, raw: unknown): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const key = localTradesKey();
+    const stored = window.localStorage.getItem(key);
+    const all = stored ? (JSON.parse(stored) as unknown[]) : [];
+    if (!Array.isArray(all)) return false;
+    const ix = all.findIndex(
+      (r) =>
+        typeof r === "object" &&
+        r !== null &&
+        (r as Record<string, unknown>)["id"] === id,
+    );
+    if (ix < 0) return false;
+    all[ix] = raw;
+    window.localStorage.setItem(key, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}

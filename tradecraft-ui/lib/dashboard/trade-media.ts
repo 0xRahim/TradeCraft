@@ -6,6 +6,8 @@ export type Shot = {
   owned: boolean;
   /** Original file for API upload (in-memory only — never serialized). */
   file?: File;
+  /** Server storage path for kept remote shots (edit mode — never serialized). */
+  storagePath?: string;
 };
 
 let seq = 0;

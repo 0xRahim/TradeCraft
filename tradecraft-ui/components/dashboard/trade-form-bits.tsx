@@ -146,17 +146,33 @@ export function FileButton({
 
 function ShotThumb({ shot, onRemove }: { shot: Shot; onRemove: () => void }) {
   const [broken, setBroken] = useState(false);
+  const hasSrc = shot.src !== "";
   return (
     <div className="relative overflow-hidden rounded-lg border border-border bg-background">
-      {broken ? (
-        <a
-          href={shot.tvUrl ?? shot.src}
-          target="_blank"
-          rel="noreferrer"
-          className="flex h-24 items-center justify-center p-2 text-center text-xs text-muted-foreground hover:text-foreground hover:underline hover:underline-offset-4"
-        >
-          Image failed to load — open original
-        </a>
+      {broken || !hasSrc ? (
+        shot.tvUrl ? (
+          <a
+            href={shot.tvUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-24 items-center justify-center p-2 text-center text-xs text-muted-foreground hover:text-foreground hover:underline hover:underline-offset-4"
+          >
+            Open TradingView snapshot
+          </a>
+        ) : broken ? (
+          <a
+            href={shot.src}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-24 items-center justify-center p-2 text-center text-xs text-muted-foreground hover:text-foreground hover:underline hover:underline-offset-4"
+          >
+            Image failed to load — open original
+          </a>
+        ) : (
+          <span className="flex h-24 items-center justify-center p-2 text-center font-mono text-xs text-subtle-foreground">
+            Preview unavailable
+          </span>
+        )
       ) : (
         <img
           src={shot.src}

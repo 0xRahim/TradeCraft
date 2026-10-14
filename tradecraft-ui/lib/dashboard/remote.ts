@@ -145,6 +145,10 @@ export function createTrade(body: unknown): Promise<ApiTradeRecord> {
   return apiFetch<ApiTradeRecord>("/trades", { method: "POST", body });
 }
 
+export function updateTrade(id: string, body: unknown): Promise<ApiTradeRecord> {
+  return apiFetch<ApiTradeRecord>(`/trades/${id}`, { method: "PATCH", body });
+}
+
 export function deleteTrade(id: string): Promise<void> {
   return apiFetch<void>(`/trades/${id}`, { method: "DELETE" });
 }
